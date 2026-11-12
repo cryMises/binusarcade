@@ -115,6 +115,8 @@ const session = {
   permissions: { is_admin: false },
 };
 
+let tokenScopes = "";
+
 const cors = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
@@ -151,6 +153,7 @@ async function mockRomm(page) {
     }
 
     if (path === "/token") {
+      tokenScopes = new URLSearchParams(request.postData() || "").get("scope") || "";
       return send(route, session.tokens);
     }
     if (path === "/users/me") return send(route, session.user);
@@ -338,6 +341,10 @@ try {
       local: JSON.stringify(localStorage),
     }));
     assert(stored.session.includes("test-access-token"), "signed-in session stores the token");
+    assert(
+      tokenScopes.includes("roms.read") && tokenScopes.includes("roms.user.write"),
+      "token request asks for the scopes the app uses",
+    );
     assert(!stored.session.includes("supersecret"), "password is not stored in sessionStorage");
     assert(!stored.local.includes("supersecret"), "password is not stored in localStorage");
     await page.screenshot({ path: join(screenshots, "home-390-login.png"), fullPage: true });

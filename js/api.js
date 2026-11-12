@@ -318,18 +318,47 @@ async function rawRequest(
 /* Tokens                                                              */
 /* ------------------------------------------------------------------ */
 
-export async function requestToken(username, password) {
-  const body = new URLSearchParams({
+/* RomM issues a token with exactly the scopes requested. An empty scope
+ * produces a valid token with no permissions, so every later API call 403s. */
+const APP_SCOPES = [
+  "me.read",
+  "roms.read",
+  "platforms.read",
+  "assets.read",
+  "devices.read",
+  "roms.user.read",
+  "roms.user.write",
+  "assets.write",
+  "devices.write",
+];
+
+const APP_READ_SCOPES = APP_SCOPES.filter((scope) => scope.endsWith(".read"));
+
+function passwordBody(username, password, scopes) {
+  return new URLSearchParams({
     grant_type: "password",
     username,
     password,
+    scope: scopes.join(" "),
   });
-  return rawRequest("/token", {
-    method: "POST",
-    body,
-    auth: false,
-    timeout: 20_000,
-  });
+}
+
+export async function requestToken(username, password) {
+  const request = (scopes) =>
+    rawRequest("/token", {
+      method: "POST",
+      body: passwordBody(username, password, scopes),
+      auth: false,
+      timeout: 20_000,
+    });
+
+  try {
+    return await request(APP_SCOPES);
+  } catch (error) {
+    if (error?.status !== 403 || !/scope/i.test(error?.detail || "")) throw error;
+    /* Viewer accounts may lack the write scopes; browse-only still works. */
+    return request(APP_READ_SCOPES);
+  }
 }
 
 let refreshPromise = null;
