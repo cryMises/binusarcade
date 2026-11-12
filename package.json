@@ -1,0 +1,11 @@
+{
+  "name": "binusarcade",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/check.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "serve": "python -m http.server 8080"
+  }
+}

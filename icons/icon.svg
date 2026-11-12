@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Binus Arcade cartridge">
+  <rect width="512" height="512" fill="#FBF3E4"/>
+  <g fill="none" stroke="#2E1E14" stroke-width="18" stroke-linejoin="round">
+    <rect x="96" y="86" width="320" height="340" rx="36" fill="#FFCE00"/>
+    <rect x="132" y="122" width="248" height="150" rx="18" fill="#2FE0A8"/>
+  </g>
+  <path d="M232 158v90l70-45z" fill="#2E1E14"/>
+  <g fill="#2E1E14" opacity=".18">
+    <circle cx="150" cy="322" r="8"/>
+    <circle cx="184" cy="322" r="8"/>
+    <circle cx="218" cy="322" r="8"/>
+    <circle cx="252" cy="322" r="8"/>
+    <circle cx="286" cy="322" r="8"/>
+    <circle cx="320" cy="322" r="8"/>
+    <circle cx="354" cy="322" r="8"/>
+  </g>
+  <g fill="none" stroke="#2E1E14" stroke-width="12" stroke-linecap="round">
+    <path d="M150 366h212"/>
+    <path d="M150 392h140"/>
+  </g>
+</svg>
