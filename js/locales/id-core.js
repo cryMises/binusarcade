@@ -9,6 +9,7 @@ export default {
   /* Navigation and chrome */
   Home: "Beranda",
   Library: "Library",
+  Shelf: "Rak",
   Scores: "Skor",
   Me: "Saya",
   Account: "Akun",

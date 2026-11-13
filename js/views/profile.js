@@ -318,17 +318,16 @@ export function profileView() {
         el(
           "p",
           { class: "note" },
-          t(
-            "Favorites, collections, ratings and the backlog are a v2 feature. Until then, the same account can manage them in stock RomM.",
-          ),
+          t("Track your progress, ratings, and play history across the library."),
         ),
         el(
           "div",
           { class: "stub-actions" },
+          el("a", { class: "btn btn-keycap-sm btn-yellow", href: "#/shelf" }, icon("book", 16), t("Open shelf")),
           el(
             "a",
-            { class: "btn btn-keycap-sm btn-yellow", href: `${ROMM_ORIGIN}`, target: "_blank", rel: "noopener noreferrer" },
-            t("Open stock RomM"),
+            { class: "btn btn-keycap-sm btn-ghost", href: `${ROMM_ORIGIN}`, target: "_blank", rel: "noopener noreferrer" },
+            t("Manage in stock RomM"),
             icon("external", 14),
           ),
         ),

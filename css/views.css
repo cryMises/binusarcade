@@ -2233,6 +2233,36 @@ a.stat-card:hover {
   }
 }
 
+/* ---------- Shelf ---------- */
+
+.shelf-view .shelf-head {
+  margin-bottom: 8px;
+}
+
+.shelf-counts {
+  margin-bottom: 12px;
+}
+
+.shelf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.shelf-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.shelf-badges .chip {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  line-height: 1.2;
+}
+
 /* ---------- Language switch placement ---------- */
 
 .topbar .lang-switch {

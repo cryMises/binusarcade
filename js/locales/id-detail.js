@@ -44,6 +44,17 @@ export default {
 
   /* Personal tab */
   Personal: "Pribadi",
+  "Manage in RomM": "Atur di RomM",
+  "Edit ratings, status, and collections in stock RomM.":
+    "Edit rating, status, dan koleksi di RomM asli.",
+  "Your progress": "Progres kamu",
+  Status: "Status",
+  Rating: "Rating",
+  Completion: "Penyelesaian",
+  Difficulty: "Kesulitan",
+  Flags: "Tanda",
+  "Now playing": "Sedang dimainkan",
+  Backlogged: "Backlog",
   "Ratings, backlog, completion and custom collections are managed in stock RomM. The button below opens this game there.":
     "Rating, backlog, penyelesaian, dan koleksi custom diatur di RomM asli. Tombol di bawah membuka game ini di sana.",
   "Open in RomM": "Buka di RomM",

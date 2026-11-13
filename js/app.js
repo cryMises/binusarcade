@@ -14,6 +14,7 @@ import { adminView, profileView, scoresView } from "./views/profile.js";
 import { detailView } from "./views/detail.js";
 import { homeView } from "./views/home.js";
 import { libraryView } from "./views/library.js";
+import { shelfView } from "./views/shelf.js";
 import { registerView } from "./views/register.js";
 import { signupView } from "./views/signup.js";
 
@@ -25,7 +26,7 @@ let chrome = null;
 const NAV_ITEMS = [
   { key: "home", href: "#/", label: "Home", icon: "home" },
   { key: "library", href: "#/library", label: "Library", icon: "grid" },
-  { key: "scores", href: "#/scores", label: "Scores", icon: "trophy" },
+  { key: "shelf", href: "#/shelf", label: "Shelf", icon: "book" },
   { key: "me", href: "#/me", label: "Me", icon: "user" },
 ];
 
@@ -415,6 +416,7 @@ function mountShell() {
     addRoute("/library", libraryView);
     addRoute("/platform/:slug", libraryView);
     addRoute("/game/:id", detailView);
+    addRoute("/shelf", shelfView);
     addRoute("/scores", scoresView);
     addRoute("/me", profileView);
     addRoute("/admin", adminView);
@@ -475,6 +477,7 @@ function refreshShell() {
 function updateChrome({ path, route }) {
   let active = "home";
   if (path.startsWith("/library") || path.startsWith("/platform")) active = "library";
+  else if (path.startsWith("/shelf")) active = "shelf";
   else if (path.startsWith("/scores")) active = "scores";
   else if (path.startsWith("/me") || path.startsWith("/admin") || path.startsWith("/signup")) active = "me";
 
@@ -488,6 +491,7 @@ function updateChrome({ path, route }) {
     "/library": t("Library"),
     "/platform/:slug": t("Platform"),
     "/game/:id": t("Game"),
+    "/shelf": t("Shelf"),
     "/scores": t("Scores"),
     "/me": t("Account"),
     "/admin": t("Admin"),

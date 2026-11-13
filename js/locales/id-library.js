@@ -38,8 +38,11 @@ export default {
   /* Play status options */
   "In progress": "Sedang dimainkan",
   Finished: "Selesai",
+  "100%": "100%",
   Retired: "Disimpan",
   "Never playing": "Belum dimainkan",
+  "Last played": "Terakhir dimainkan",
+  Favorites: "Favorit",
 
   /* Counts */
   "Loading the shelf…": "Memuat rak…",

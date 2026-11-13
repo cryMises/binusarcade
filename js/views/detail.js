@@ -271,14 +271,15 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
       "aria-labelledby": "tab-personal-button",
       hidden: true,
     },
+    buildProgressBlock(rom),
     el(
       "div",
       { class: "block" },
-      el("h2", { class: "marker marker-sm" }, t("Personal")),
+      el("h2", { class: "marker marker-sm" }, t("Manage in RomM")),
       el(
         "p",
         { class: "note" },
-        t("Ratings, backlog, completion and custom collections are managed in stock RomM. The button below opens this game there."),
+        t("Edit ratings, status, and collections in stock RomM."),
       ),
       el(
         "div",
@@ -338,6 +339,80 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
   tabButtons.children[1].addEventListener("click", () => activate("personal"));
 
   return tabSection;
+}
+
+function statusLabel(status) {
+  const map = {
+    INCOMPLETE: t("In progress"),
+    FINISHED: t("Finished"),
+    COMPLETED_100: t("100%"),
+    RETIRED: t("Retired"),
+    NEVER_PLAYING: t("Never playing"),
+  };
+  return map[status] || "";
+}
+
+function buildProgressBlock(rom) {
+  const ru = rom?.rom_user;
+  if (!ru || typeof ru !== "object") return null;
+
+  const rows = [];
+  const status = statusLabel(ru.status);
+  if (status) rows.push([t("Status"), status]);
+
+  const rating = Number(ru.rating) || 0;
+  if (rating > 0) rows.push([t("Rating"), `★ ${rating}/5`]);
+
+  const completion = Number(ru.completion) || 0;
+  if (completion > 0) rows.push([t("Completion"), `${completion}%`]);
+
+  const difficulty = Number(ru.difficulty) || 0;
+  if (difficulty > 0) rows.push([t("Difficulty"), String(difficulty)]);
+
+  if (ru.last_played) {
+    try {
+      const d = new Date(ru.last_played);
+      if (!Number.isNaN(d.getTime())) {
+        rows.push([
+          t("Last played"),
+          d.toLocaleString(document.documentElement.lang || "id", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        ]);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const flags = [];
+  if (ru.now_playing) flags.push(t("Now playing"));
+  if (ru.backlogged) flags.push(t("Backlogged"));
+  if (flags.length) rows.push([t("Flags"), flags.join(" · ")]);
+
+  if (!rows.length) return null;
+
+  return el(
+    "div",
+    { class: "block" },
+    el("h2", { class: "marker marker-sm" }, t("Your progress")),
+    el(
+      "div",
+      { class: "ledger-list" },
+      ...rows.map(([label, value]) =>
+        el(
+          "div",
+          { class: "ledger" },
+          el("div", { class: "ledger-label" }, label),
+          el("div", { class: "ledger-value", style: { "font-size": "1rem" } }, value),
+        ),
+      ),
+    ),
+  );
 }
 
 function buildScreenshots(rom) {

@@ -36,9 +36,21 @@ export default {
 
   /* Personal shelf */
   "Personal shelf": "Rak pribadi",
-  "Favorites, collections, ratings and the backlog are a v2 feature. Until then, the same account can manage them in stock RomM.":
-    "Favorit, koleksi, rating, dan backlog baru ada di v2. Sementara itu, akun yang sama bisa mengaturnya di RomM asli.",
+  "Track your progress, ratings, and play history across the library.":
+    "Lihat progres, rating, dan riwayat mainmu di seluruh library.",
+  "Open shelf": "Buka rak",
+  "Manage in stock RomM": "Atur di RomM asli",
   "Open stock RomM": "Buka RomM asli",
+  "My shelf": "Rak saya",
+  "Your progress across the library.": "Progres kamu di seluruh library.",
+  "Last played {date}": "Terakhir dimainkan {date}",
+  "No games in this section yet.": "Belum ada game di bagian ini.",
+  "Loading your shelf…": "Memuat rak kamu…",
+  "Your shelf is empty": "Rak kamu kosong",
+  "Play or track games in RomM and they’ll show up here.":
+    "Main atau catat game di RomM dan mereka akan muncul di sini.",
+  "Your shelf will fill up as you play and track games in RomM.":
+    "Rak kamu akan terisi saat kamu main dan mencatat game di RomM.",
 
   /* Scores */
   "Coming in v3": "Hadir di v3",
