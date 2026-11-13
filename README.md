@@ -80,7 +80,65 @@ Binus Arcade therefore uses RomM's documented OAuth2 password/refresh grant:
 Same RomM account. No new accounts, no server changes beyond CORS. The server must be
 reachable over HTTPS; the configured origin is already HTTPS.
 
-### 3. Images and content
+### 3. Game file CORS (only if Play says the browser blocked the download)
+
+RomM 5.4.1 serves ROM bytes through nginx's internal `/library/` location. That
+location does not add CORS headers, so the browser can authenticate
+`/api/roms/{id}/content/...` but cannot read the redirected file. Login and the rest
+of the API still work. The fix is server-side and belongs to the RomM operator; it
+does not touch the database or game files.
+
+Copy the nginx template out of the running container:
+
+```sh
+docker cp romm:/etc/nginx/templates/default.conf.template ./romm-nginx.conf.template
+```
+
+In that file, extend both internal file locations:
+
+```nginx
+location /library/ {
+    internal;
+    alias "${ROMM_BASE_PATH}/library/";
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Range" always;
+    add_header Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges, Content-Disposition" always;
+}
+
+location /cache/ {
+    internal;
+    alias "${ROMM_CACHE_BASE_PATH}/";
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Range" always;
+    add_header Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges, Content-Disposition" always;
+}
+```
+
+Mount the edited file in the RomM service's `volumes:` list and recreate the
+container:
+
+```yaml
+      - ./romm-nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+```
+
+```sh
+docker compose up -d romm
+```
+
+Verify without credentials (the 404 is expected; the CORS header is the point):
+
+```sh
+curl -sSI -H 'Origin: https://crymises.github.io' \
+  https://crymises-music.centralindia.cloudapp.azure.com:8449/library/test.gba \
+  | grep -i access-control
+```
+
+`*` is safe here: ROM downloads use a bearer token with `credentials: "omit"`, and
+`/library/` and `/cache/` are internal nginx locations, not public URLs.
+
+### 4. Images and content
 
 Covers, screenshots and manuals are read from RomM's own metadata paths. External art
 URLs are not hot-linked. Game content is fetched with the bearer token into a blob URL
