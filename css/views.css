@@ -439,6 +439,16 @@
   place-items: center;
 }
 
+.cart-abbr.has-device {
+  padding: 4px 6px;
+  background: transparent;
+}
+
+.cart-abbr .platform-device-icon {
+  height: 24px;
+  max-width: 52px;
+}
+
 .cart-name {
   margin-top: 12px;
   font-size: 0.9375rem;
@@ -548,6 +558,16 @@
   color: var(--on-surface-muted);
   font-size: 0.6875rem;
   line-height: 1.4;
+}
+
+.game-meta .meta-platform {
+  display: inline-flex;
+  align-items: center;
+}
+
+.game-meta .platform-device-icon {
+  height: 14px;
+  max-width: 40px;
 }
 
 .game-meta .dot {

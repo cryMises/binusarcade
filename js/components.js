@@ -9,8 +9,20 @@ import {
 } from "./config.js";
 
 const DEVICE_IMAGES = {
+  atari2600: "./icons/devices/atari2600.svg",
+  browser: "./icons/devices/browser.svg",
+  flash: "./icons/devices/flash.svg",
+  gb: "./icons/devices/gb.svg",
   gba: "./icons/devices/gba.svg",
+  gbc: "./icons/devices/gbc.svg",
+  genesis: "./icons/devices/genesis.svg",
+  megadrive: "./icons/devices/genesis.svg",
   nds: "./icons/devices/nds.svg",
+  nes: "./icons/devices/nes.svg",
+  ps: "./icons/devices/psx.svg",
+  psx: "./icons/devices/psx.svg",
+  psp: "./icons/devices/psp.svg",
+  snes: "./icons/devices/snes.svg",
 };
 import { isAdmin } from "./api.js";
 import { LOCALES, formatNumber, intlLocale, locale, t } from "./i18n.js";
@@ -271,7 +283,8 @@ export function gameCard(rom, index = 0) {
   const accent = colorForPlatform(platformSlugOf(rom), platformLabelOf(rom));
   const year = formatReleaseYear(rom.metadatum?.first_release_date);
   const rating = rom.metadatum?.average_rating;
-  const meta = [shortPlatformLabel(rom), year].filter(Boolean).join(" · ");
+  const device = platformDeviceImage(rom, { size: 16 });
+  const platformLabel = shortPlatformLabel(rom);
   const coverNode = cover(rom, { size: "small" });
 
   const card = el(
@@ -288,7 +301,8 @@ export function gameCard(rom, index = 0) {
       "span",
       { class: "game-meta" },
       el("span", { class: "dot", style: { "--cart": accent } }),
-      meta || t("Game"),
+      device ? el("span", { class: "meta-platform has-device" }, device) : (platformLabel || t("Game")),
+      year ? (device ? ` ${year}` : ` · ${year}`) : "",
       rating ? ` · ${Math.round(rating)}%` : "",
     ),
   );
@@ -315,6 +329,7 @@ export function platformCart(platform) {
       .replace(/[^A-Za-z0-9]/g, "")
       .slice(0, 4)
       .toUpperCase();
+  const device = platformDeviceImage(platform.fs_slug || platform.slug || "", { size: 22 });
 
   return el(
     "a",
@@ -327,7 +342,7 @@ export function platformCart(platform) {
     el(
       "div",
       { class: "cart-system" },
-      el("span", { class: "cart-abbr" }, abbreviation),
+      el("span", { class: `cart-abbr${device ? " has-device" : ""}` }, device || abbreviation),
       el("span", { class: "chip-cat" }, `${platform.rom_count || 0}`),
     ),
     el("div", { class: "cart-name" }, platform.display_name || platform.name),
