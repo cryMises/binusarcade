@@ -349,6 +349,34 @@ try {
     await context.close();
   }
 
+  /* Chromium's ResizeObserver warning is routine EJS noise, not a game
+     failure. Real errors must still reach the parent. */
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(`${base}play-frame.html`);
+    await page.evaluate(() => {
+      window.__messages = [];
+      window.addEventListener("message", (event) => window.__messages.push(event.data));
+      window.dispatchEvent(
+        new ErrorEvent("error", {
+          message: "ResizeObserver loop completed with undelivered notifications.",
+        }),
+      );
+      window.dispatchEvent(new ErrorEvent("error", { message: "A real emulator failure" }));
+    });
+    const messages = await page.evaluate(() => window.__messages);
+    assert(
+      !messages.some((message) => String(message?.message || "").includes("ResizeObserver")),
+      "ResizeObserver noise is ignored",
+    );
+    assert(
+      messages.some((message) => String(message?.message || "").includes("A real emulator failure")),
+      "real emulator errors still reach the parent",
+    );
+    await context.close();
+  }
+
   /* Login flow and token-only storage */
   {
     const { context, page } = await newPage(browser, { signedIn: false });

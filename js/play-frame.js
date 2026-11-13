@@ -286,13 +286,23 @@ function handleMessage(event) {
   }
 }
 
+/* Chromium emits this when a ResizeObserver triggers another layout change.
+ * EJS does it constantly; it is noise, not a failed game. */
+function isBenign(message) {
+  return /ResizeObserver loop (limit exceeded|completed with undelivered notifications)/i.test(
+    String(message || ""),
+  );
+}
+
 window.addEventListener("message", handleMessage);
 window.addEventListener("error", (event) => {
   const message = event.message || "The emulator crashed.";
+  if (isBenign(message)) return;
   post("error", { message: `Emulator (${bootStage}): ${message}` });
 });
 window.addEventListener("unhandledrejection", (event) => {
   const message = event.reason?.message || "The emulator hit an unhandled error.";
+  if (isBenign(message)) return;
   post("error", { message: `Emulator (${bootStage}): ${message}` });
 });
 
