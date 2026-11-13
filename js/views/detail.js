@@ -11,6 +11,7 @@ import {
   icon,
   loadingLine,
   miniLedger,
+  platformDeviceImage,
   screenshotModal,
   screenshotUrl,
   siteFooter,
@@ -150,11 +151,14 @@ function buildHero({ rom, platformSlug, accent, name }) {
       el(
         "div",
         { class: "detail-platform-row" },
-        el(
-          "span",
-          { class: "washi-tape", style: { "--rule": accent } },
-          shortPlatformLabel(rom),
-        ),
+        (() => {
+          const device = platformDeviceImage(rom, { size: 20 });
+          return el(
+            "span",
+            { class: `washi-tape${device ? " has-device" : ""}`, style: { "--rule": accent } },
+            device || shortPlatformLabel(rom),
+          );
+        })(),
         rom.is_identified === false
           ? el("span", { class: "rubber-stamp red" }, t("Unidentified"))
           : el("span", { class: "rubber-stamp green" }, t("In library")),

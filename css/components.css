@@ -157,6 +157,19 @@ h3 {
   user-select: none;
 }
 
+.washi-tape.has-device {
+  padding: 3px 8px;
+  line-height: 1;
+}
+
+.platform-device-icon {
+  display: block;
+  height: 18px;
+  width: auto;
+  max-width: 56px;
+  object-fit: contain;
+}
+
 .washi-tape.mint,
 .rubber-stamp.green {
   border-color: transparent;

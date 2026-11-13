@@ -100,7 +100,7 @@ function renderBoot(note) {
       el(
         "div",
         { class: "splash-card" },
-        el("div", { class: "splash-cart", "aria-hidden": "true" }, "B"),
+        el("img", { class: "splash-logo", src: "./icons/icon.svg", alt: "", width: 72, height: 72, decoding: "async" }),
         el("h1", { class: "marker" }, "Binus Arcade"),
         el("p", { class: "note splash-note" }, note || t("Connecting to your library…")),
       ),
@@ -375,7 +375,7 @@ function mountShell() {
       el(
         "a",
         { class: "brand", href: "#/" },
-        el("span", { class: "brand-badge", "aria-hidden": "true" }, "B"),
+        el("img", { class: "brand-badge", src: "./icons/icon.svg", alt: "", width: 34, height: 34, decoding: "async" }),
         el("span", { class: "brand-word" }, "Binus Arcade"),
       ),
       el(

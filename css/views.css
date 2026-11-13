@@ -44,17 +44,12 @@
   text-align: center;
 }
 
-.splash-cart {
-  display: grid;
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1;
-  place-items: center;
+.splash-logo {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  box-shadow: var(--shadow-1);
   animation: cartBounce 2.4s var(--ease) infinite alternate;
 }
 
@@ -106,17 +101,12 @@
 }
 
 .brand-badge {
-  display: grid;
+  display: block;
   width: 34px;
   height: 34px;
   flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1;
-  place-items: center;
+  border-radius: 9px;
+  object-fit: cover;
 }
 
 .brand-word {

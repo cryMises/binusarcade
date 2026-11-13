@@ -5,13 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#2a0145" />
     <meta name="description" content="Binus Arcade — tampilan ramah ponsel untuk library game RomM pribadi." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Binus Arcade" />
+    <meta property="og:title" content="Binus Arcade" />
+    <meta property="og:description" content="Tampilan ramah ponsel untuk library game RomM pribadi." />
+    <meta property="og:url" content="https://crymises.github.io/binusarcade/" />
+    <meta property="og:image" content="https://crymises.github.io/binusarcade/icons/og-image.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Binus Arcade" />
+    <meta name="twitter:description" content="Tampilan ramah ponsel untuk library game RomM pribadi." />
+    <meta name="twitter:image" content="https://crymises.github.io/binusarcade/icons/og-image.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Binus Arcade" />
 
     <title>Binus Arcade</title>
     <link rel="manifest" href="./manifest.json" />
-    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="icon" href="./icons/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 
     <link rel="stylesheet" href="./css/tokens.css" />
@@ -129,7 +140,7 @@
     <div id="app">
       <div class="boot-splash">
         <div class="splash-card">
-          <div class="splash-cart" aria-hidden="true">B</div>
+          <img class="splash-logo" src="./icons/icon.svg" alt="" width="72" height="72" decoding="async" />
           <h1 class="marker">Binus Arcade</h1>
           <p class="note splash-note" data-boot-note>Menghubungkan ke library…</p>
         </div>

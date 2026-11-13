@@ -3,7 +3,7 @@
  * core downloads are never put in this cache.
  */
 
-const VERSION = "binusarcade-v13";
+const VERSION = "binusarcade-v14";
 const SHELL = [
   "./",
   "./index.html",
@@ -36,6 +36,9 @@ const SHELL = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",
+  "./icons/og-image.svg",
+  "./icons/devices/gba.svg",
+  "./icons/devices/nds.svg",
 ];
 
 self.addEventListener("install", (event) => {

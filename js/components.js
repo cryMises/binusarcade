@@ -7,6 +7,11 @@ import {
   stockAdminUrl,
   ROMM_ORIGIN,
 } from "./config.js";
+
+const DEVICE_IMAGES = {
+  gba: "./icons/devices/gba.svg",
+  nds: "./icons/devices/nds.svg",
+};
 import { isAdmin } from "./api.js";
 import { LOCALES, formatNumber, intlLocale, locale, t } from "./i18n.js";
 
@@ -236,8 +241,29 @@ export function shortName(rom) {
   );
 }
 
+export function platformDeviceImage(romOrSlug, { size = 20 } = {}) {
+  const slug = typeof romOrSlug === "string" ? romOrSlug : platformSlugOf(romOrSlug);
+  const src = DEVICE_IMAGES[slug];
+  if (!src) return null;
+  return el("img", {
+    class: "platform-device-icon",
+    src,
+    alt: shortPlatformLabel(typeof romOrSlug === "string" ? { platform_slug: romOrSlug } : romOrSlug),
+    width: Math.round(size * 1.7),
+    height: size,
+    loading: "lazy",
+    decoding: "async",
+  });
+}
+
 export function platformWashi(rom, variant = "") {
-  return el("span", { class: `washi-tape ${variant}` }, shortPlatformLabel(rom));
+  const slug = platformSlugOf(rom);
+  const device = platformDeviceImage(slug, { size: 18 });
+  return el(
+    "span",
+    { class: `washi-tape ${variant}${device ? " has-device" : ""}` },
+    device || shortPlatformLabel(rom),
+  );
 }
 
 export function gameCard(rom, index = 0) {
