@@ -3,7 +3,7 @@
  * core downloads are never put in this cache.
  */
 
-const VERSION = "binusarcade-v19";
+const VERSION = "binusarcade-v21";
 const SHELL = [
   "./",
   "./index.html",
@@ -37,6 +37,7 @@ const SHELL = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",
+  "./icons/icon-maskable.svg",
   "./icons/og-image.svg",
   "./icons/devices/atari2600.svg",
   "./icons/devices/browser.svg",
