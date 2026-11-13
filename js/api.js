@@ -96,6 +96,10 @@ export function isAdmin(session = getSession()) {
   );
 }
 
+export function isRoleAdmin(session = getSession()) {
+  return session?.user?.role === "admin";
+}
+
 function tokenExpiresAt(session) {
   const savedAt = Number(session?.saved_at || 0);
   const expires = Number(session?.tokens?.expires || 0);
@@ -320,7 +324,7 @@ async function rawRequest(
 
 /* RomM issues a token with exactly the scopes requested. An empty scope
  * produces a valid token with no permissions, so every later API call 403s. */
-const APP_SCOPES = [
+const APP_USER_SCOPES = [
   "me.read",
   "roms.read",
   "platforms.read",
@@ -332,7 +336,9 @@ const APP_SCOPES = [
   "devices.write",
 ];
 
-const APP_READ_SCOPES = APP_SCOPES.filter((scope) => scope.endsWith(".read"));
+const APP_SCOPES = [...APP_USER_SCOPES, "users.read", "users.write"];
+
+const APP_READ_SCOPES = APP_USER_SCOPES.filter((scope) => scope.endsWith(".read"));
 
 function passwordBody(username, password, scopes) {
   return new URLSearchParams({
@@ -352,13 +358,15 @@ export async function requestToken(username, password) {
       timeout: 20_000,
     });
 
-  try {
-    return await request(APP_SCOPES);
-  } catch (error) {
-    if (error?.status !== 403 || !/scope/i.test(error?.detail || "")) throw error;
-    /* Viewer accounts may lack the write scopes; browse-only still works. */
-    return request(APP_READ_SCOPES);
+  for (const scopes of [APP_SCOPES, APP_USER_SCOPES]) {
+    try {
+      return await request(scopes);
+    } catch (error) {
+      if (error?.status !== 403 || !/scope/i.test(error?.detail || "")) throw error;
+      /* Non-admin and viewer accounts lack elevated scopes; step down safely. */
+    }
   }
+  return request(APP_READ_SCOPES);
 }
 
 let refreshPromise = null;
@@ -703,6 +711,19 @@ export const api = {
       keepalive: true,
       timeout: 15_000,
     }).catch(() => null);
+  },
+
+  users({ signal } = {}) {
+    return rawRequest("/users", { signal });
+  },
+
+  createInviteLink({ role = "user", expiration = 3600 } = {}, { signal } = {}) {
+    return rawRequest("/users/invite-link", {
+      method: "POST",
+      query: { role, expiration },
+      signal,
+      timeout: 20_000,
+    });
   },
 };
 

@@ -13,6 +13,7 @@ import { detailView } from "./views/detail.js";
 import { homeView } from "./views/home.js";
 import { libraryView } from "./views/library.js";
 import { registerView } from "./views/register.js";
+import { signupView } from "./views/signup.js";
 
 const app = document.getElementById("app");
 let routerStarted = false;
@@ -355,6 +356,7 @@ function mountShell() {
     addRoute("/scores", scoresView);
     addRoute("/me", profileView);
     addRoute("/admin", adminView);
+    addRoute("/signup", signupView);
     addRoute("/register", (ctx) => {
       ctx.navigate("/", { replace: true });
       return el("div");
@@ -381,7 +383,7 @@ function updateChrome({ path, route }) {
   let active = "home";
   if (path.startsWith("/library") || path.startsWith("/platform")) active = "library";
   else if (path.startsWith("/scores")) active = "scores";
-  else if (path.startsWith("/me") || path.startsWith("/admin")) active = "me";
+  else if (path.startsWith("/me") || path.startsWith("/admin") || path.startsWith("/signup")) active = "me";
 
   document.querySelectorAll("[data-nav]").forEach((link) => {
     if (link.dataset.nav === active) link.setAttribute("aria-current", "page");
@@ -396,6 +398,7 @@ function updateChrome({ path, route }) {
     "/scores": "Scores",
     "/me": "Account",
     "/admin": "Admin",
+    "/signup": "Signup QR",
   };
   if (route !== "/game/:id") {
     const title = titles[route] || "Binus Arcade";

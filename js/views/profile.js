@@ -1,5 +1,6 @@
-import { avatarUrl, getSession, isAdmin } from "../api.js";
+import { avatarUrl, getSession, isAdmin, isRoleAdmin } from "../api.js";
 import {
+  clear,
   el,
   icon,
   cartridgeMini,
@@ -12,13 +13,24 @@ import {
   ROMM_ORIGIN,
 } from "../config.js";
 import { logout, userInitials, userLabel } from "../auth.js";
+import { createSignupPanel } from "./signup.js";
 
 export function profileView() {
   const session = getSession();
   const user = session?.user || {};
   const admin = isAdmin(session);
+  const roleAdmin = isRoleAdmin(session);
   const root = el("div", { class: "view wrap profile-view" });
   const avatar = avatarUrl(user);
+  const signupSlot = el("div", { class: "signup-slot", "data-signup-slot": "", hidden: true });
+  let signupPanel = null;
+
+  function closeSignupPanel() {
+    signupPanel?.cleanup?.();
+    signupPanel = null;
+    clear(signupSlot);
+    signupSlot.hidden = true;
+  }
 
   const avatarNode = el(
     "span",
@@ -37,7 +49,7 @@ export function profileView() {
       "aria-pressed": "false",
     },
     el("span", { class: "profile-row-icon" }, icon("moon", 18)),
-    "Switch paper tone",
+    "Switch theme",
     el("span", { class: "chev" }, "↔"),
   );
 
@@ -87,8 +99,48 @@ export function profileView() {
     el("span", { class: "chev" }, "→"),
   );
 
+  const signupSwitch = roleAdmin
+    ? el(
+        "button",
+        {
+          class: "profile-row profile-switch",
+          type: "button",
+          role: "switch",
+          "aria-checked": "false",
+          "data-signup-switch": "",
+          on: {
+            click: (event) => {
+              const button = event.currentTarget;
+              const nextOpen = button.getAttribute("aria-checked") !== "true";
+              button.setAttribute("aria-checked", nextOpen ? "true" : "false");
+              if (nextOpen) {
+                closeSignupPanel();
+                signupPanel = createSignupPanel({ showFullScreen: true });
+                signupSlot.append(signupPanel.el);
+                signupSlot.hidden = false;
+              } else {
+                closeSignupPanel();
+              }
+            },
+          },
+        },
+        el("span", { class: "profile-row-icon" }, icon("qr", 18)),
+        el(
+          "span",
+          { class: "profile-switch-copy" },
+          el("span", { class: "profile-switch-title" }, "Signup QR panel"),
+          el("span", { class: "profile-switch-note" }, "Off by default · Single-use player invite"),
+        ),
+        el(
+          "span",
+          { class: "switch-track", "aria-hidden": "true" },
+          el("span", { class: "switch-thumb" }),
+        ),
+      )
+    : null;
+
   root.append(
-    el("div", { class: "eyebrow" }, "Player card"),
+    el("div", { class: "eyebrow" }, "Account"),
     el(
       "section",
       { class: "profile-head block" },
@@ -130,8 +182,10 @@ export function profileView() {
               el("span", { class: "chev" }, "↗"),
             )
           : null,
+        roleAdmin ? signupSwitch : null,
         logoutButton,
       ),
+      roleAdmin ? signupSlot : null,
     ),
     el(
       "section",
@@ -160,7 +214,12 @@ export function profileView() {
     siteFooter(),
   );
 
-  return root;
+  return {
+    el: root,
+    cleanup() {
+      closeSignupPanel();
+    },
+  };
 }
 
 export function scoresView() {

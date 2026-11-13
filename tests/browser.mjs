@@ -133,7 +133,16 @@ function send(route, body, status = 200) {
 
 const recorded = [];
 
-async function mockRomm(page, { failContent = false } = {}) {
+async function mockRomm(page, { failContent = false, userRole = "user", inviteOptions = null } = {}) {
+  const state = inviteOptions || {
+    mintCount: 0,
+    users: [
+      { id: 1, username: "pongo", role: userRole },
+    ],
+    failMintStatus: 0,
+    rejectAdminScopes: false,
+  };
+
   await page.route("https://crymises-music.centralindia.cloudapp.azure.com:8449/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -171,6 +180,9 @@ async function mockRomm(page, { failContent = false } = {}) {
       if (params.get("username") === "pending") {
         return send(route, { detail: "Insufficient scope" }, 403);
       }
+      if (state.rejectAdminScopes && /\busers\.(read|write)\b/.test(tokenScopes)) {
+        return send(route, { detail: "Insufficient scope" }, 403);
+      }
       return send(route, session.tokens);
     }
     if (path === "/users/register") {
@@ -180,8 +192,16 @@ async function mockRomm(page, { failContent = false } = {}) {
       }
       return send(route, { id: 2, username: payload.username, email: payload.email, enabled: true }, 201);
     }
-    if (path === "/users/me") return send(route, session.user);
-    if (path === "/permissions/me") return send(route, session.permissions);
+    if (path === "/users/invite-link" && request.method() === "POST") {
+      if (state.failMintStatus) {
+        return send(route, { detail: "Insufficient scope" }, state.failMintStatus);
+      }
+      state.mintCount += 1;
+      return send(route, { token: `invite-token-${state.mintCount}`, url: null }, 201);
+    }
+    if (path === "/users") return send(route, state.users);
+    if (path === "/users/me") return send(route, { ...session.user, role: userRole });
+    if (path === "/permissions/me") return send(route, { is_admin: userRole === "admin" });
     if (path === "/logout") return send(route, {});
     if (path === "/platforms") return send(route, platforms);
     if (path === "/stats") {
@@ -290,14 +310,32 @@ async function mockRomm(page, { failContent = false } = {}) {
 
 const errors = [];
 
-async function newPage(browser, { signedIn = true, viewport = { width: 390, height: 844 }, failContent = false } = {}) {
+async function newPage(
+  browser,
+  {
+    signedIn = true,
+    viewport = { width: 390, height: 844 },
+    failContent = false,
+    userRole = "user",
+    inviteOptions = null,
+    installClock = false,
+  } = {},
+) {
   const context = await browser.newContext({ viewport });
   if (signedIn) {
+    const seeded = {
+      ...session,
+      user: { ...session.user, role: userRole },
+      permissions: { is_admin: userRole === "admin" },
+    };
     await context.addInitScript((value) => {
       sessionStorage.setItem("binusarcade.session", JSON.stringify(value));
-    }, session);
+    }, seeded);
   }
   const page = await context.newPage();
+  if (installClock) {
+    await page.clock.install();
+  }
   page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
     if (message.type() !== "error") return;
@@ -305,7 +343,7 @@ async function newPage(browser, { signedIn = true, viewport = { width: 390, heig
     if (/Failed to load resource/.test(message.text())) return;
     errors.push(`console: ${message.text()}`);
   });
-  await mockRomm(page, { failContent });
+  await mockRomm(page, { failContent, userRole, inviteOptions });
   return { context, page };
 }
 
@@ -455,6 +493,124 @@ try {
     await page.click('button[type="submit"]');
     await page.waitForSelector(".stat-card", { timeout: 10_000 });
     assert(await page.isVisible("text=Library stats"), "register auto-logins and lands on Home");
+    await context.close();
+  }
+
+  /* Non-admin scope fallback on login + non-admin cannot see or open Signup QR */
+  {
+    const inviteOptions = {
+      mintCount: 0,
+      users: [{ id: 1, username: "pongo", role: "user" }],
+      failMintStatus: 0,
+      rejectAdminScopes: true,
+    };
+    const { context, page } = await newPage(browser, { signedIn: false, userRole: "user", inviteOptions });
+    await page.goto(base);
+    await page.waitForSelector("#login-username", { timeout: 10_000 });
+    await page.fill("#login-username", "pongo");
+    await page.fill("#login-password", "supersecret");
+    await page.click('button[type="submit"]');
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
+    assert(
+      tokenScopes.includes("roms.read") && tokenScopes.includes("roms.user.write") && !tokenScopes.includes("users.write"),
+      "non-admin login falls back cleanly without admin user scopes",
+    );
+
+    const beforeCount = recorded.length;
+    await page.goto(`${base}#/me`);
+    await page.waitForSelector(".profile-list", { timeout: 10_000 });
+    assert((await page.locator("[data-signup-switch]").count()) === 0, "non-admin does not see signup QR switch");
+
+    await page.goto(`${base}#/signup`);
+    await page.waitForSelector("text=Admin access required", { timeout: 10_000 });
+    const signupCalls = recorded
+      .slice(beforeCount)
+      .filter((item) => item.path === "/users/invite-link" || item.path === "/users");
+    assert(signupCalls.length === 0, "non-admin route gate makes no invite or user calls");
+    await context.close();
+  }
+
+  /* Admin Signup QR switch, auto-refresh on new user + expiry, cleanup, and 403 handling */
+  {
+    const inviteOptions = {
+      mintCount: 0,
+      users: [{ id: 1, username: "pongo", role: "admin" }],
+      failMintStatus: 0,
+      rejectAdminScopes: false,
+    };
+    const { context, page } = await newPage(browser, {
+      userRole: "admin",
+      inviteOptions,
+      installClock: true,
+    });
+    const beforeOpen = recorded.length;
+    await page.goto(`${base}#/me`);
+    await page.waitForSelector("[data-signup-switch]", { timeout: 10_000 });
+    assert(
+      (await page.getAttribute("[data-signup-switch]", "aria-checked")) === "false",
+      "signup QR switch defaults to OFF",
+    );
+    assert(
+      recorded.slice(beforeOpen).filter((item) => item.path === "/users/invite-link" || item.path === "/users").length === 0,
+      "no invite or user calls happen while switch is OFF",
+    );
+
+    await page.click("[data-signup-switch]");
+    await page.waitForSelector("[data-signup-qr] svg", { timeout: 10_000 });
+    const firstLink = await page.inputValue("[data-signup-link]");
+    assert(
+      firstLink === "https://crymises.github.io/binusarcade/?token=invite-token-1#/register",
+      "signup QR encodes configured app URL + token + #/register",
+    );
+    assert((await page.locator("[data-signup-timer]").innerText()).trim() === "60:00", "expiry countdown starts at 60:00");
+    assert(await page.isVisible("[data-new-invite]"), "new invite button is shown");
+    assert(await page.isVisible("text=Single-use player invite"), "security notice is shown");
+
+    const qrBg = await page.evaluate(() => getComputedStyle(document.querySelector(".signup-qr-card")).backgroundColor);
+    assert(qrBg === "rgb(255, 255, 255)", "QR card stays white for scanner contrast");
+    await page.screenshot({ path: join(screenshots, "signup-qr-390.png"), fullPage: true });
+
+    /* New user detected on 10s poll triggers fresh invite */
+    inviteOptions.users.push({ id: 2, username: "friend", role: "user" });
+    await page.clock.fastForward(10_500);
+    await page.waitForFunction(
+      () => document.querySelector("[data-signup-link]")?.value.includes("invite-token-2"),
+      { timeout: 10_000 },
+    );
+    assert(
+      (await page.inputValue("[data-signup-link]")).includes("invite-token-2"),
+      "new user on 10s poll automatically refreshes the invite QR",
+    );
+
+    /* Countdown expiry triggers fresh invite */
+    await page.clock.fastForward(3_600_000);
+    await page.waitForFunction(
+      () => document.querySelector("[data-signup-link]")?.value.includes("invite-token-3"),
+      { timeout: 10_000 },
+    );
+    assert(
+      (await page.inputValue("[data-signup-link]")).includes("invite-token-3"),
+      "expiry automatically mints a fresh invite",
+    );
+
+    /* Toggling switch OFF stops polling and timers */
+    await page.click("[data-signup-switch]");
+    assert((await page.getAttribute("[data-signup-switch]", "aria-checked")) === "false", "switch toggles back OFF");
+    const afterClose = recorded.length;
+    await page.clock.fastForward(25_000);
+    assert(
+      recorded.slice(afterClose).filter((item) => item.path === "/users" || item.path === "/users/invite-link").length === 0,
+      "closing signup switch stops all polling and timers",
+    );
+
+    /* Mint 403 surfaces missing users.write scope plainly */
+    inviteOptions.failMintStatus = 403;
+    await page.goto(`${base}#/signup`);
+    await page.waitForSelector("[data-signup-error] .signup-error", { timeout: 10_000 });
+    assert(
+      (await page.locator("[data-signup-error]").innerText()).includes("users.write"),
+      "mint 403 surfaces missing users.write scope plainly",
+    );
     await context.close();
   }
 

@@ -5,6 +5,12 @@
 
 export const ROMM_ORIGIN = "https://crymises-music.centralindia.cloudapp.azure.com:8449";
 export const API_BASE = `${ROMM_ORIGIN}/api`;
+export const APP_PUBLIC_URL = "https://crymises.github.io/binusarcade";
+
+export function signupInviteUrl(token, baseUrl = APP_PUBLIC_URL) {
+  const cleanBase = String(baseUrl || APP_PUBLIC_URL).replace(/\/+$/, "");
+  return `${cleanBase}/?token=${encodeURIComponent(token)}#/register`;
+}
 
 export const APP_NAME = "Binus Arcade";
 export const APP_VERSION = "1.0.0";

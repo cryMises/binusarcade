@@ -1,36 +1,25 @@
 # Binus Arcade
 
-A phone-first, static front end for a self-hosted [RomM](https://romm.app/) library.
-Paper, washi tape, cartridge cards, and actual playable games — no framework, no build
-step, no bundler.
+A phone-first, static, view-only front end for a self-hosted [RomM](https://romm.app/)
+library — plain ES modules and hand-written CSS matching stock RomM's Material theme
+without a framework or bundler.
 
-The v1 target is M0–M4 of `binusarcade-build-plan.md`; the parity phases that
-follow are tracked in `binusarcade-continuation-plan.md`.
+- Sign in with your RomM account (OAuth2 bearer token in `sessionStorage`, never cookies)
+- Invite-only registration (`#/register`, `?token=...` auto-filled)
+- Home: stats-only overview from `/api/stats`, `/api/platforms`, `/api/saves`, `/api/activity`, and recently added detail links (never launches games)
+- Library: dynamic game showcase (fits natural cover art aspect, max 3 per row or 2 per row for wide art), debounced search, platform/genre/players/status filters, sort, hash-persisted state
+- Detail: metadata, screenshots, saves/save-states lists, and `Open in stock RomM` links
+- Account (`#/me`): dark/light theme switcher (follows OS by default), PWA install, RomM account links, and an **admin-only Signup QR switch** (off by default) that mints single-use `role=user` invite links (`?token=...#/register`) and auto-refreshes when a friend signs up or after 60 minutes
+- PWA: installable manifest and app-shell-only service worker
 
-- sign in with the same RomM account;
-- Home: Continue Playing, Systems Shelf, Recently Added;
-- Library: full grids, debounced search, platform/genre/players/status filters, sorting,
-  hash-persisted filter state;
-- Game detail: metadata, screenshots, saves, save states, stock-RomM links;
-- Play: EmulatorJS for the mapped systems, Ruffle for Flash/browser files;
-- PWA: installable manifest, offline app shell, graceful API failures;
-- light and dark paper themes.
+## Current deployment state
 
-## Current deployment state (2026-11-13)
-
-- **Production URL:** <https://binusarcade.pages.dev/> is currently a temporary
-  `302` redirect to stock RomM. The repo's `_redirects` file holds that redirect
-  while frontend parity work continues.
-- **Preview:** <https://crymises.github.io/binusarcade/> runs the frontend from
-  `main` and is the live test surface. It is a preview, not the production front
-  door.
-- **Source of truth:** this repo. The Cloudflare build command is flipped back to
-  the full static deploy when the frontend is ready to go live again
-  (`binusarcade-continuation-plan.md` §8).
+- **Production URL:** <https://binusarcade.pages.dev/> currently returns a temporary `302`
+  redirect to stock RomM via `_redirects`.
+- **Preview:** <https://crymises.github.io/binusarcade/> deploys from `main` via
+  `.github/workflows/pages.yml` and serves the live frontend.
 
 ## Run locally
-
-Any static file server works. From this directory:
 
 ```sh
 python -m http.server 8080
@@ -38,202 +27,66 @@ python -m http.server 8080
 npx serve -l 8080
 ```
 
-Open <http://localhost:8080/>. The app talks to the RomM origin in
-`js/config.js`; the browser enforces CORS even on localhost.
+Open <http://localhost:8080/>. The app talks to the RomM origin configured in `js/config.js`.
 
 ## RomM server requirements
 
 ### 1. Allow these origins (required)
 
-RomM's API is cross-origin from every static host. On the RomM server, set:
+On the RomM server, set:
 
 ```env
 ROMM_CORS_ALLOWED_ORIGINS=https://binusarcade.pages.dev,https://crymises.github.io
 ```
 
-`https://binusarcade.pages.dev` is the production origin once the frontend is live;
-`https://crymises.github.io` is the current preview origin. For local development,
-add the local origin too (comma-separated), e.g.:
-
-```env
-ROMM_CORS_ALLOWED_ORIGINS=https://binusarcade.pages.dev,https://crymises.github.io,http://localhost:8080
-```
-
-Recreate the RomM container after changing the environment. Without this, the browser
-preflight fails and the login screen reports that it cannot reach the server.
+Add `http://localhost:8080` (comma-separated) when developing locally, then recreate the
+RomM container.
 
 ### 2. Auth note: OAuth2 token instead of the session cookie
 
-The short version: **the stock RomM browser session cookie cannot be used from a
-static frontend on another origin**. RomM sets its session cookie with `SameSite=Lax`,
-so a cross-site request from `crymises.github.io` or `binusarcade.pages.dev` to the RomM
-origin neither sends nor stores it. This is a browser rule, not a bug in the app.
+RomM sets its browser session cookie with `SameSite=Lax`, so a cross-origin static site
+cannot send or read it. Binus Arcade uses RomM's OAuth2 password/refresh grant
+(`POST /api/token`) with `Authorization: Bearer <access_token>` stored in
+`sessionStorage` only.
 
-Binus Arcade therefore uses RomM's documented OAuth2 password/refresh grant:
+- Standard login requests `me.read`, `roms.read`, `platforms.read`, `assets.read`,
+  `devices.read`, `roms.user.read`, `roms.user.write`, `assets.write`, `devices.write`,
+  plus `users.read` and `users.write` (used only by the admin-only Signup QR panel).
+- Non-admin accounts automatically fall back to standard user scopes or read-only scopes
+  if `users.*` or write scopes are rejected.
 
-- `POST /api/token` with `grant_type=password`, username and password;
-- `Authorization: Bearer <access_token>` on API requests;
-- refresh-token rotation before expiry;
-- tokens live in **sessionStorage only** (cleared when the tab closes);
-- the password is sent once to RomM and is never stored or logged.
+### 3. Invite-only signup QR panel (admin-only)
 
-Same RomM account. No new accounts, no server changes beyond CORS. The server must be
-reachable over HTTPS; the configured origin is already HTTPS.
-
-### 3. Game file CORS (only if Play says the browser blocked the download)
-
-RomM 5.4.1 serves ROM bytes through nginx's internal `/library/` location. That
-location does not add CORS headers, so the browser can authenticate
-`/api/roms/{id}/content/...` but cannot read the redirected file. Login and the rest
-of the API still work. The fix is server-side and belongs to the RomM operator; it
-does not touch the database or game files.
-
-Copy the nginx template out of the running container:
-
-```sh
-docker cp romm:/etc/nginx/templates/default.conf.template ./romm-nginx.conf.template
-```
-
-In that file, extend both internal file locations:
-
-```nginx
-location /library/ {
-    internal;
-    alias "${ROMM_BASE_PATH}/library/";
-    add_header Access-Control-Allow-Origin "*" always;
-    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Range" always;
-    add_header Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges, Content-Disposition" always;
-}
-
-location /cache/ {
-    internal;
-    alias "${ROMM_CACHE_BASE_PATH}/";
-    add_header Access-Control-Allow-Origin "*" always;
-    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Range" always;
-    add_header Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges, Content-Disposition" always;
-}
-```
-
-Mount the edited file in the RomM service's `volumes:` list and recreate the
-container:
-
-```yaml
-      - ./romm-nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
-```
-
-```sh
-docker compose up -d romm
-```
-
-Verify without credentials (the 404 is expected; the CORS header is the point):
-
-```sh
-curl -sSI -H 'Origin: https://crymises.github.io' \
-  https://crymises-music.centralindia.cloudapp.azure.com:8449/library/test.gba \
-  | grep -i access-control
-```
-
-`*` is safe here: ROM downloads use a bearer token with `credentials: "omit"`, and
-`/library/` and `/cache/` are internal nginx locations, not public URLs.
-
-### 4. Images and content
-
-Covers, screenshots and manuals are read from RomM's own metadata paths. External art
-URLs are not hot-linked. Game content is fetched with the bearer token into a blob URL
-for the emulator, so no token ever appears in a URL.
-
-## Deploy
-
-### GitHub Pages (preview)
-
-Push to `main`. `.github/workflows/pages.yml` copies the static site into `_site` and
-deploys it to GitHub Pages:
-
-<https://crymises.github.io/binusarcade/>
-
-This copy is the preview environment while Cloudflare production stays a redirect. Its
-origin must be present in `ROMM_CORS_ALLOWED_ORIGINS` (above).
-
-### Cloudflare Pages (production)
-
-The Cloudflare project builds from this repo on `main`. Its current build command is
-redirect-only:
-
-```
-mkdir -p _site && cp _redirects _site/
-```
-
-`_redirects` sends every request to stock RomM with a `302`. To restore the full
-frontend, change the build command in Cloudflare → binusarcade → Settings → Build
-configuration to:
-
-```
-mkdir -p _site && cp -R index.html play-frame.html manifest.json sw.js css js icons _site/
-```
-
-then retry the deployment. The redirect is temporary on purpose, so flipping back and
-forth is safe. The frontend does not need its own origin configured; only RomM's CORS
-value depends on the deployed origin.
-
-## Emulator notes
-
-- Core map mirrors stock RomM 5.4.1 (`js/config.js`): NES `fceumm`, SNES `snes9x`,
-  Genesis `genesis_plus_gx`, GB/GBC `gambatte`, GBA `mgba`, NDS `melonds`, PS1
-  `pcsx_rearmed`, PSP `ppsspp`, Atari 2600 `stella2014`.
-- EmulatorJS 4.2.3 is loaded from its CDN inside `play-frame.html`. The iframe isolates
-  the emulator so leaving Play really stops it.
-- Flash/browser files use Ruffle from the CDN. Ruffle support depends on the file.
-- **Nintendo DS touch screen:** phone touch does not reach the emulated DS touch screen.
-  Touch-heavy DS games need a mouse or stylus on a computer. The play view says this.
-- PS1 BIOS is best-effort: if RomM has a firmware file for the platform, it is downloaded
-  with auth and passed to the core; if not, the game still attempts to boot and reports
-  the failure.
-- Multi-file games show a file/disc picker. Saves and save states upload and download
-  through RomM's `/api/saves` and `/api/states` endpoints.
-
-## What is intentionally not in v1
-
-- Phase 1: personal shelves, collections, profile editing, client tokens,
-  notifications, saves/states management, js-dos/PICO-8/EasyRPG players.
-- Phase 2: leaderboards, stats, recommendations, library editing, manuals,
-  walkthroughs, jukebox, feeds.
-- Phase 3: the admin console.
-- Phase 4: server-gated features (netplay, streaming, RetroAchievements, OIDC,
-  device pairing) until each backend gate is verified live.
-
-Those slots are kept behind the API layer and the "soon" views. Nothing from the stock
-feature inventory is silently removed; v1 simply doesn't build their UI yet. The phase
-checklist is in `binusarcade-continuation-plan.md`.
+- Visible in Account (`#/me`) and at `#/signup` **only** when `/api/users/me` returns
+  `role === "admin"`. Defaults to **OFF**.
+- Calls `POST /api/users/invite-link?role=user&expiration=3600` (single-use player invite)
+  and polls `GET /api/users` every 10 seconds while open to rotate the QR automatically
+  after someone registers or when the 60:00 timer expires.
+- Generates QR codes offline using the vendored MIT library in `js/vendor/qrcode.js`.
+- Invite URL base comes from `APP_PUBLIC_URL` in `js/config.js`.
 
 ## Verify
 
-- Static syntax: `npm test` (runs `node --check` on the app modules).
-- Browser smoke: `npm run test:browser` (Playwright, if installed) checks the login
-  gate, a mocked signed-in Home, library filters, play surfaces, 360/1280 overflow,
-  token scopes, and that the password is never stored.
-- Manual: on the preview URL, sign in on a phone, browse, search, play one GBA and one
-  NDS game, save, reopen the save in stock RomM.
+- Static checks: `npm test` (parses all JS modules + `sw.js` and runs unit checks).
+- Browser smoke: `npm run test:browser` (Playwright suite covering Home stats, dynamic showcase aspect/columns, filters, Detail, Login, Register, Admin Signup QR polling/expiry/cleanup, 360px/1280px layouts, and zero console/page errors).
 
 ## Files
 
 ```
-index.html            shell + icon sprite + theme bootstrap
-play-frame.html       emulator sandbox document
+index.html            shell, MDI icon sprite, theme bootstrap
 manifest.json         PWA manifest
-sw.js                 app-shell cache only
+sw.js                 app-shell-only service worker cache
 _redirects            Cloudflare production redirect to stock RomM
-css/tokens.css        katchup design tokens, light + night-paper dark
-css/components.css    marker, tape, ticket, cart, ledger, keycap, chips
-css/views.css         layout, home, library, detail, play, login, states
-js/config.js          RomM origin, API base, core map, storage keys
-js/api.js             bearer session, refresh, fetch wrapper, endpoints
+css/tokens.css        stock RomM light + dark theme tokens
+css/components.css    Material buttons, chips, inputs, cards, modals
+css/views.css         topbar, bottom nav, home stats, showcase grid, detail, profile, login/register, signup QR
+js/config.js          RomM origin, API base, public invite URL base, platform helpers
+js/api.js             bearer session, token scope fallback, refresh, fetch wrapper, endpoints
 js/auth.js            login / restore / logout
 js/theme.js           theme persistence + prefers-color-scheme
-js/router.js          small hash router
-js/components.js      DOM helpers, cards, tickets, toasts, modal, formats
-js/views/*.js         Home, Library, Detail, Play, Me/Scores/Admin
+js/router.js          hash router
+js/components.js      DOM helpers, dynamic cards, toasts, modal, formats
+js/vendor/qrcode.js   vendored MIT QR generator (qrcode-generator)
+js/views/*.js         Home, Library, Detail, Register, Signup QR, Me/Scores/Admin
 icons/                SVG + PNG + maskable app icons
-binusarcade-continuation-plan.md  parity phases, decisions, deployment state
 ```

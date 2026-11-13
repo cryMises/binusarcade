@@ -1908,6 +1908,206 @@ a.stat-card:hover {
   font-weight: 600;
 }
 
+/* ---------- Admin signup QR panel ---------- */
+
+.profile-switch {
+  text-align: left;
+}
+
+.profile-switch-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-switch-title {
+  font-weight: 600;
+}
+
+.profile-switch-note {
+  color: var(--on-surface-muted);
+  font-size: 0.75rem;
+}
+
+.switch-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 44px;
+  height: 24px;
+  margin-left: auto;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--toplayer);
+  transition: background-color 140ms var(--ease), border-color 140ms var(--ease);
+}
+
+.switch-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--on-surface-muted);
+  transition: transform 140ms var(--ease), background-color 140ms var(--ease);
+}
+
+.profile-switch[aria-checked="true"] .switch-track {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.profile-switch[aria-checked="true"] .switch-thumb {
+  transform: translateX(20px);
+  background: var(--on-primary);
+}
+
+.signup-slot {
+  margin-top: 14px;
+}
+
+.signup-view {
+  max-width: 640px;
+}
+
+.signup-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.signup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.signup-head h2 {
+  margin: 2px 0 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.signup-timer-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.signup-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--toplayer);
+  border: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.signup-status {
+  margin: 0;
+}
+
+.signup-error-slot:empty {
+  display: none;
+}
+
+.signup-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--romm-red);
+  font-size: 0.875rem;
+}
+
+.signup-error-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 220px;
+}
+
+.signup-body {
+  display: grid;
+  gap: 14px;
+}
+
+.signup-body[hidden] {
+  display: none;
+}
+
+.signup-qr-card {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.signup-qr-frame {
+  width: min(260px, 100%);
+  aspect-ratio: 1;
+}
+
+.signup-qr-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.signup-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.signup-link-input {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+
+.signup-copy-btn {
+  flex: 0 0 auto;
+}
+
+.signup-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.signup-security-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--toplayer);
+  border: 1px solid var(--line);
+  color: var(--on-surface-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.signup-security-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 380px) {

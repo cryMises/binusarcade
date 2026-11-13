@@ -34,7 +34,11 @@ const checks = [
   ["Empty query dropped", !api.buildUrl("/roms", { search_term: "" }).includes("search_term")],
   ["Content URL", api.romContentUrl({ id: 7, fs_name: "game.gba" }, { id: 9, file_name: "game.gba" }).includes("/api/roms/7/content/game.gba")],
   ["Stock URL", config.stockRomUrl(7).endsWith("/rom/7")],
+  ["Signup invite URL", config.signupInviteUrl("abc.123") === `${config.APP_PUBLIC_URL}/?token=abc.123#/register`],
   ["Register API method", typeof api.api.register === "function"],
+  ["Invite link API method", typeof api.api.createInviteLink === "function"],
+  ["Users API method", typeof api.api.users === "function"],
+  ["Strict admin role check", api.isRoleAdmin({ user: { role: "admin" } }) && !api.isRoleAdmin({ user: { role: "user" }, permissions: { is_admin: true } })],
 ];
 
 let failed = 0;
