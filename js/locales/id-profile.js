@@ -12,6 +12,10 @@ export default {
   "Switch theme": "Ganti tema",
   Language: "Bahasa",
   "Applies to every screen.": "Berlaku di semua layar.",
+  "Stay signed in": "Tetap masuk",
+  "Keeps you signed in after you close the browser.": "Kamu tetap masuk setelah browser ditutup.",
+  "Staying signed in on this device.": "Tetap masuk di perangkat ini.",
+  "You'll be signed out when you close the browser.": "Kamu akan keluar saat browser ditutup.",
   "Install on this phone": "Pasang di ponsel ini",
   "Install from your browser menu: Add to Home screen.":
     "Pasang dari menu browser: Tambahkan ke layar utama.",

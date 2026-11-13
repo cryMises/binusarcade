@@ -439,6 +439,41 @@ h3 {
   gap: 6px;
 }
 
+/* Checkbox row (stay signed in) */
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.check-input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+}
+
+.check-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.check-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.check-note {
+  color: var(--on-surface-muted);
+  font-size: 0.75rem;
+}
+
 .field > label,
 .field-label {
   color: var(--on-surface-muted);

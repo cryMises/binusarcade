@@ -42,6 +42,8 @@ export default {
     "Masuk dengan akun RomM kamu. Kata sandi tidak pernah disimpan.",
   "RomM username": "Nama pengguna RomM",
   Password: "Kata sandi",
+  "Stay signed in on this device": "Tetap masuk di perangkat ini",
+  "Best on your own phone or laptop.": "Cocok untuk ponsel atau laptop pribadi.",
   "Fill in both fields.": "Isi kedua kolom.",
   "Signing in…": "Sedang masuk…",
   "Can't reach the RomM server. Ask the server owner to allow this origin in ROMM_CORS_ALLOWED_ORIGINS, then try again.":

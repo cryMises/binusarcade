@@ -1,4 +1,4 @@
-import { avatarUrl, getSession, hasSession, isAdmin } from "./api.js";
+import { avatarUrl, getSession, hasSession, isAdmin, isPersistentSession, setPersistentSession } from "./api.js";
 import { login, logout, restoreSession, userInitials, userLabel } from "./auth.js";
 import {
   el,
@@ -143,6 +143,26 @@ function renderLogin(message = "") {
     required: true,
   });
 
+  const remember = el("input", {
+    class: "check-input",
+    id: "login-remember",
+    name: "remember",
+    type: "checkbox",
+    checked: isPersistentSession(),
+  });
+
+  const rememberRow = el(
+    "label",
+    { class: "check-row", for: "login-remember" },
+    remember,
+    el(
+      "span",
+      { class: "check-copy" },
+      el("span", { class: "check-title" }, t("Stay signed in on this device")),
+      el("span", { class: "check-note" }, t("Best on your own phone or laptop.")),
+    ),
+  );
+
   const submit = el(
     "button",
     { class: "btn btn-primary", type: "submit" },
@@ -165,6 +185,7 @@ function renderLogin(message = "") {
       el("label", { for: "login-password" }, t("Password")),
       password,
     ),
+    rememberRow,
     errorBox,
     submit,
   );
@@ -181,6 +202,7 @@ function renderLogin(message = "") {
     form.querySelector(".login-error")?.remove();
 
     try {
+      setPersistentSession(remember.checked);
       await login(username.value.trim(), password.value);
       password.value = "";
       if (!document.querySelector(".topbar")) mountShell();

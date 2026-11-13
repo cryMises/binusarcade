@@ -451,22 +451,50 @@ try {
     await page.goto(base);
     await page.waitForSelector("#login-username");
     assert(await page.isVisible("text=Create account"), "login links to invite registration");
+    assert(await page.isChecked("#login-remember"), "stay signed in is on by default");
+    await page.screenshot({ path: join(screenshots, "login-390.png"), fullPage: true });
     await page.fill("#login-username", "pongo");
     await page.fill("#login-password", "supersecret");
     await page.click('button[type="submit"]');
     await page.waitForSelector(".stat-card", { timeout: 10_000 });
     const stored = await page.evaluate(() => ({
       session: sessionStorage.getItem("binusarcade.session") || "",
-      local: JSON.stringify(localStorage),
+      local: localStorage.getItem("binusarcade.session") || "",
+      localAll: JSON.stringify(localStorage),
     }));
-    assert(stored.session.includes("test-access-token"), "signed-in session stores the token");
+    assert(stored.local.includes("test-access-token"), "stay signed in keeps the session in localStorage");
+    assert(!stored.session, "sessionStorage copy is cleared when staying signed in");
     assert(
       tokenScopes.includes("roms.read") && tokenScopes.includes("roms.user.write"),
       "token request asks for the scopes the app uses",
     );
-    assert(!stored.session.includes("supersecret"), "password is not stored in sessionStorage");
     assert(!stored.local.includes("supersecret"), "password is not stored in localStorage");
+    assert(!stored.localAll.includes("supersecret"), "password is not stored anywhere in localStorage");
+    await page.reload();
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
+    assert(await page.isVisible(".topbar"), "staying signed in survives a reload");
     await page.screenshot({ path: join(screenshots, "home-390-login.png"), fullPage: true });
+    await context.close();
+  }
+
+  /* Opting out of stay signed in keeps the session tab-only */
+  {
+    const { context, page } = await newPage(browser, { signedIn: false });
+    await page.goto(base);
+    await page.waitForSelector("#login-remember");
+    await page.uncheck("#login-remember");
+    await page.fill("#login-username", "pongo");
+    await page.fill("#login-password", "supersecret");
+    await page.click('button[type="submit"]');
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
+    const stored = await page.evaluate(() => ({
+      session: sessionStorage.getItem("binusarcade.session") || "",
+      local: localStorage.getItem("binusarcade.session") || "",
+      flag: localStorage.getItem("binusarcade.remember"),
+    }));
+    assert(stored.session.includes("test-access-token"), "unchecked login keeps the session in sessionStorage");
+    assert(!stored.local, "unchecked login leaves no session in localStorage");
+    assert(stored.flag === "0", "the stay signed in choice is remembered");
     await context.close();
   }
 
@@ -569,6 +597,20 @@ try {
     const beforeOpen = recorded.length;
     await page.goto(`${base}#/me`);
     await page.waitForSelector("[data-signup-switch]", { timeout: 10_000 });
+    assert(
+      (await page.getAttribute("[data-persist-switch]", "aria-checked")) === "true",
+      "stay signed in row defaults to on",
+    );
+    await page.click("[data-persist-switch]");
+    assert(
+      (await page.evaluate(() => localStorage.getItem("binusarcade.remember"))) === "0",
+      "settings switch turns stay signed in off",
+    );
+    await page.click("[data-persist-switch]");
+    assert(
+      (await page.evaluate(() => localStorage.getItem("binusarcade.remember"))) === "1",
+      "settings switch turns stay signed in back on",
+    );
     assert(
       (await page.getAttribute("[data-signup-switch]", "aria-checked")) === "false",
       "signup QR switch defaults to OFF",

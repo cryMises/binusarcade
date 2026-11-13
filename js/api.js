@@ -2,8 +2,9 @@
  *
  * Auth note: RomM's session cookie is SameSite=Lax, so a GitHub Pages origin
  * cannot use cookie auth. We use RomM's documented OAuth2 password/refresh
- * token endpoint instead. Tokens live in sessionStorage only; passwords are
- * never stored or logged.
+ * token endpoint instead. Tokens live in sessionStorage by default and in
+ * localStorage when "stay signed in" is on; passwords are never stored or
+ * logged.
  */
 
 import {
@@ -41,7 +42,15 @@ function dispatch(name, detail) {
 /* Session                                                             */
 /* ------------------------------------------------------------------ */
 
-function storage() {
+function localStore() {
+  try {
+    return globalThis.localStorage || null;
+  } catch {
+    return null;
+  }
+}
+
+function sessionStore() {
   try {
     return globalThis.sessionStorage || null;
   } catch {
@@ -49,12 +58,54 @@ function storage() {
   }
 }
 
+/* Staying signed in is the default; only an explicit "0" opts out. */
+export function isPersistentSession() {
+  try {
+    return localStore()?.getItem(STORAGE.sessionPersist) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+/* Where the session is written first, and where the stale copy may linger. */
+function sessionStores() {
+  const local = localStore();
+  const session = sessionStore();
+  return isPersistentSession() ? [local, session] : [session, local];
+}
+
+function readStoredSession() {
+  const [primary, secondary] = sessionStores();
+  let raw = null;
+  try {
+    raw = primary?.getItem(STORAGE.session) || null;
+  } catch {
+    /* ignore */
+  }
+  if (raw) return raw;
+  try {
+    raw = secondary?.getItem(STORAGE.session) || null;
+  } catch {
+    return null;
+  }
+  if (raw) {
+    /* Upgrade a session written before the storage mode changed. */
+    try {
+      primary?.setItem(STORAGE.session, raw);
+      secondary?.removeItem(STORAGE.session);
+    } catch {
+      /* ignoring the move is safe: the session still loads */
+    }
+  }
+  return raw;
+}
+
 let memorySession = null;
 
 export function getSession() {
   if (memorySession) return memorySession;
   try {
-    const raw = storage()?.getItem(STORAGE.session);
+    const raw = readStoredSession();
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -63,13 +114,57 @@ export function getSession() {
 
 export function setSession(session) {
   memorySession = session;
+  const [primary, secondary] = sessionStores();
   try {
-    storage()?.setItem(STORAGE.session, JSON.stringify(session));
+    primary?.setItem(STORAGE.session, JSON.stringify(session));
+    secondary?.removeItem(STORAGE.session);
   } catch {
     /* Private mode / quota: the in-memory session still works for this page. */
   }
   dispatch("binusarcade:session", session);
   return session;
+}
+
+/* Moves any stored session between localStorage and sessionStorage so the
+ * "stay signed in" choice applies immediately, without signing the user out. */
+export function setPersistentSession(remember) {
+  const next = Boolean(remember);
+  let raw = null;
+  try {
+    raw = sessionStore()?.getItem(STORAGE.session) || null;
+  } catch {
+    /* ignore */
+  }
+  if (!raw) {
+    try {
+      raw = localStore()?.getItem(STORAGE.session) || null;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  try {
+    localStore()?.setItem(STORAGE.sessionPersist, next ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+
+  const [primary, secondary] = sessionStores();
+  if (raw) {
+    try {
+      primary?.setItem(STORAGE.session, raw);
+      secondary?.removeItem(STORAGE.session);
+    } catch {
+      /* keep the old copy rather than losing the session */
+      try {
+        const fallback = next ? sessionStore() : localStore();
+        fallback?.setItem(STORAGE.session, raw);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return next;
 }
 
 export function updateSession(patch) {
@@ -79,10 +174,12 @@ export function updateSession(patch) {
 
 export function clearSession() {
   memorySession = null;
-  try {
-    storage()?.removeItem(STORAGE.session);
-  } catch {
-    /* ignore */
+  for (const store of [localStore(), sessionStore()]) {
+    try {
+      store?.removeItem(STORAGE.session);
+    } catch {
+      /* ignore */
+    }
   }
   dispatch("binusarcade:session", null);
 }

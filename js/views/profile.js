@@ -1,4 +1,13 @@
-import { api, avatarUrl, getSession, hasSignupRelay, isAdmin, isRoleAdmin } from "../api.js";
+import {
+  api,
+  avatarUrl,
+  getSession,
+  hasSignupRelay,
+  isAdmin,
+  isPersistentSession,
+  isRoleAdmin,
+  setPersistentSession,
+} from "../api.js";
 import {
   clear,
   el,
@@ -71,6 +80,43 @@ export function profileView() {
       el("span", { class: "profile-switch-note" }, t("Applies to every screen.")),
     ),
     languageSwitch,
+  );
+
+  const persistSwitch = el(
+    "button",
+    {
+      class: "profile-row profile-switch",
+      type: "button",
+      role: "switch",
+      "aria-checked": isPersistentSession() ? "true" : "false",
+      "data-persist-switch": "",
+      on: {
+        click: (event) => {
+          const button = event.currentTarget;
+          const next = button.getAttribute("aria-checked") !== "true";
+          button.setAttribute("aria-checked", next ? "true" : "false");
+          setPersistentSession(next);
+          toast(
+            next
+              ? t("Staying signed in on this device.")
+              : t("You'll be signed out when you close the browser."),
+            { tone: "success" },
+          );
+        },
+      },
+    },
+    el("span", { class: "profile-row-icon" }, icon("lock", 18)),
+    el(
+      "span",
+      { class: "profile-switch-copy" },
+      el("span", { class: "profile-switch-title" }, t("Stay signed in")),
+      el("span", { class: "profile-switch-note" }, t("Keeps you signed in after you close the browser.")),
+    ),
+    el(
+      "span",
+      { class: "switch-track", "aria-hidden": "true" },
+      el("span", { class: "switch-thumb" }),
+    ),
   );
 
   const installButton = el(
@@ -239,6 +285,7 @@ export function profileView() {
         { class: "profile-list" },
         themeToggle,
         languageRow,
+        persistSwitch,
         installButton,
         el(
           "a",

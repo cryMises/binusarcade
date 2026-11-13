@@ -209,6 +209,65 @@ for (const [key, value] of placeholderMismatch) console.error(`placeholder misma
 
 const relayChecks = await checkRelayDO();
 
+/* Stay signed in: session routing between localStorage and sessionStorage. */
+function fakeStorage() {
+  const map = new Map();
+  return {
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(key, String(value)),
+    removeItem: (key) => map.delete(key),
+  };
+}
+
+const persistenceChecks = (() => {
+  const local = fakeStorage();
+  const session = fakeStorage();
+  const previousLocal = globalThis.localStorage;
+  const previousSession = globalThis.sessionStorage;
+  globalThis.localStorage = local;
+  globalThis.sessionStorage = session;
+  try {
+    api.clearSession();
+    api.setPersistentSession(false);
+    api.setSession({ tokens: { access_token: "tab-token" } });
+    const tabOnly =
+      session.getItem(config.STORAGE.session)?.includes("tab-token") &&
+      !local.getItem(config.STORAGE.session);
+
+    api.setPersistentSession(true);
+    const migrated =
+      local.getItem(config.STORAGE.session)?.includes("tab-token") &&
+      !session.getItem(config.STORAGE.session);
+
+    api.setSession({ tokens: { access_token: "kept-token" } });
+    const staysPersistent = local.getItem(config.STORAGE.session)?.includes("kept-token");
+
+    api.setPersistentSession(false);
+    const movedBack =
+      session.getItem(config.STORAGE.session)?.includes("kept-token") &&
+      !local.getItem(config.STORAGE.session);
+
+    api.clearSession();
+    api.setPersistentSession(true);
+    session.setItem(config.STORAGE.session, JSON.stringify({ tokens: { access_token: "legacy-token" } }));
+    const legacyLoaded = api.getSession()?.tokens?.access_token === "legacy-token";
+    const legacyMoved =
+      local.getItem(config.STORAGE.session)?.includes("legacy-token") &&
+      !session.getItem(config.STORAGE.session);
+
+    api.clearSession();
+    const cleared = !session.getItem(config.STORAGE.session) && !local.getItem(config.STORAGE.session);
+
+    return { tabOnly, migrated, staysPersistent, movedBack, legacyLoaded, legacyMoved, cleared };
+  } finally {
+    api.clearSession();
+    if (previousLocal === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = previousLocal;
+    if (previousSession === undefined) delete globalThis.sessionStorage;
+    else globalThis.sessionStorage = previousSession;
+  }
+})();
+
 const checks = [
   ["Platform alias", config.normalizePlatform("ps") === "psx"],
   ["Platform accent", Boolean(config.colorForPlatform("gba", "Game Boy Advance"))],
@@ -232,6 +291,13 @@ const checks = [
   ["i18n dictionaries have no conflicting translations", conflictingKeys.length === 0],
   ["i18n dictionaries keep placeholders", placeholderMismatch.length === 0],
   ["i18n covers every view area", localeFiles.every((name) => Object.keys(localeModules[name]).length > 0)],
+  ["stay signed in off uses sessionStorage", persistenceChecks.tabOnly],
+  ["enabling stay signed in migrates the session", persistenceChecks.migrated],
+  ["persistent session survives new writes", persistenceChecks.staysPersistent],
+  ["disabling stay signed in migrates back", persistenceChecks.movedBack],
+  ["legacy tab session loads when persistence is on", persistenceChecks.legacyLoaded],
+  ["legacy tab session moves to localStorage", persistenceChecks.legacyMoved],
+  ["sign out clears both storages", persistenceChecks.cleared],
 
   ["Relay DO defaults disabled", relayChecks.disabledDefault],
   ["Relay DO blocks non-admin toggle", relayChecks.nonAdminBlocked],

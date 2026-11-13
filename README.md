@@ -4,7 +4,7 @@ A phone-first, static, view-only front end for a self-hosted [RomM](https://romm
 library — plain ES modules and hand-written CSS matching stock RomM's Material theme
 without a framework or bundler.
 
-- Sign in with your RomM account (OAuth2 bearer token in `sessionStorage`, never cookies)
+- Sign in with your RomM account (OAuth2 bearer token, `localStorage` when "stay signed in" is on — the default — otherwise `sessionStorage`; never cookies)
 - Invite-only registration (`#/register`, `?token=...` auto-filled)
 - Home: stats-only overview from `/api/stats`, `/api/platforms`, `/api/saves`, `/api/activity`, and recently added detail links (never launches games)
 - Library: dynamic game showcase (fits natural cover art aspect, max 3 per row or 2 per row for wide art), debounced search, platform/genre/players/status filters, sort, hash-persisted state
@@ -47,13 +47,18 @@ RomM container.
 RomM sets its browser session cookie with `SameSite=Lax`, so a cross-origin static site
 cannot send or read it. Binus Arcade uses RomM's OAuth2 password/refresh grant
 (`POST /api/token`) with `Authorization: Bearer <access_token>` stored in
-`sessionStorage` only.
+`sessionStorage` by default and in `localStorage` when **Stay signed in** is on
+(the default). The choice lives in `localStorage["binusarcade.remember"]`; switching
+it moves the stored session between the two stores without signing out.
 
 - Standard login requests `me.read`, `roms.read`, `platforms.read`, `assets.read`,
   `devices.read`, `roms.user.read`, `roms.user.write`, `assets.write`, `devices.write`,
   plus `users.read` and `users.write` (used only by the admin-only Signup QR panel).
 - Non-admin accounts automatically fall back to standard user scopes or read-only scopes
   if `users.*` or write scopes are rejected.
+- Full-page reloads reuse the stored refresh token; `localStorage` is never written
+  before sign-in and never holds the password. On a shared device, turn **Stay signed
+  in** off in Account → Settings (or untick it on the sign-in screen).
 
 ### 3. Invite-only signup QR panel (admin-only) + optional public Create account relay
 
@@ -112,7 +117,7 @@ css/views.css         topbar, bottom nav, home stats, showcase grid, detail, pro
 js/config.js          RomM origin, API base, public invite URL base, platform helpers
 js/i18n.js            language state, `t()` / `tn()`, `<html lang>` + `binusarcade:lang`
 js/locales/*.js       Indonesian dictionaries keyed by the exact English source string
-js/api.js             bearer session, token scope fallback, refresh, fetch wrapper, endpoints
+js/api.js             bearer session (localStorage or sessionStorage), scope fallback, refresh, fetch wrapper, endpoints
 js/auth.js            login / restore / logout
 js/theme.js           theme persistence + prefers-color-scheme
 js/router.js          hash router

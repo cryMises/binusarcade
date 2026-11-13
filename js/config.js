@@ -30,6 +30,7 @@ export const REQUEST_TIMEOUT = 30_000;
 
 export const STORAGE = {
   session: "binusarcade.session",
+  sessionPersist: "binusarcade.remember",
   theme: "binusarcade.theme",
   device: "binusarcade.device",
   lang: "binusarcade.lang",

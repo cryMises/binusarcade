@@ -2005,6 +2005,7 @@ a.stat-card:hover {
 .switch-track {
   position: relative;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   width: 44px;
   height: 24px;
