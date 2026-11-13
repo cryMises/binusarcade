@@ -7,11 +7,12 @@ import {
   formatBytes,
   gameCard,
   icon,
+  platformDeviceImage,
   sectionHead,
   skeletonGrid,
   timeAgo,
 } from "../components.js";
-import { RAIL_SIZE } from "../config.js";
+import { RAIL_SIZE, normalizePlatform } from "../config.js";
 import { t } from "../i18n.js";
 
 function labelize(value) {
@@ -118,8 +119,10 @@ function systemsPanel(platforms) {
   const list = el("div", { class: "system-list" });
   withGames.forEach((platform) => {
     const slug = platform.slug || platform.fs_slug || platform.id;
+    const normalized = normalizePlatform(slug);
     const count = Number(platform.rom_count) || 0;
     const percent = Math.max(0, Math.min(100, (count / Math.max(max, 1)) * 100));
+    const device = platformDeviceImage(normalized, { size: 22 });
     list.append(
       el(
         "a",
@@ -128,7 +131,11 @@ function systemsPanel(platforms) {
           href: `#/platform/${encodeURIComponent(slug)}`,
           "aria-label": t("{name}: {n} games", { name: platform.display_name || platform.name, n: count }),
         },
-        el("span", { class: "system-abbr", "aria-hidden": "true" }, platform.abbreviation || "?"),
+        el(
+          "span",
+          { class: `system-abbr${device ? " has-device" : ""}`, "aria-hidden": "true" },
+          device || platform.abbreviation || "?",
+        ),
         el(
           "span",
           { class: "system-body" },

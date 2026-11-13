@@ -1847,6 +1847,16 @@ a.stat-card:hover {
   place-items: center;
 }
 
+.system-abbr.has-device {
+  padding: 4px 6px;
+  background: transparent;
+}
+
+.system-abbr .platform-device-icon {
+  height: 26px;
+  max-width: 54px;
+}
+
 .system-body {
   display: grid;
   gap: 6px;
