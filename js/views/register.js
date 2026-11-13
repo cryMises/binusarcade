@@ -9,8 +9,9 @@
 
 import { api, hasSignupRelay } from "../api.js";
 import { login } from "../auth.js";
-import { clear, el, icon } from "../components.js";
+import { clear, el, icon, langSwitch } from "../components.js";
 import { signupClaimUrl } from "../config.js";
+import { t } from "../i18n.js";
 import { buildQrSvg, formatCountdown } from "./signup.js";
 
 const RELAY_POLL_MS = 4_000;
@@ -41,7 +42,11 @@ function errorBox(message) {
   return el("div", { class: "login-error", role: "alert" }, icon("alert", 18), el("span", {}, message));
 }
 
-function backLink(label = "Back to sign in") {
+function cardHead(eyebrow) {
+  return el("div", { class: "login-card-top" }, el("div", { class: "eyebrow" }, eyebrow), langSwitch());
+}
+
+function backLink(label = t("Back to sign in")) {
   return el(
     "button",
     {
@@ -144,7 +149,7 @@ export function registerView() {
       autocapitalize: "none",
       spellcheck: "false",
       required: true,
-      placeholder: prefillToken ? "" : "Paste your invite token",
+      placeholder: prefillToken ? "" : t("Paste your invite token"),
     });
     if (prefillToken) tokenInput.value = prefillToken;
 
@@ -152,7 +157,7 @@ export function registerView() {
       "button",
       { class: "btn btn-keycap btn-mint", type: "submit" },
       icon("user", 18),
-      "Create account",
+      t("Create account"),
     );
 
     const errorSlot = el("div", { class: "register-error-slot" });
@@ -163,7 +168,7 @@ export function registerView() {
 
     const idleButton = () => {
       submit.disabled = false;
-      submit.replaceChildren(icon("user", 18), "Create account");
+      submit.replaceChildren(icon("user", 18), t("Create account"));
     };
 
     const form = el(
@@ -172,40 +177,40 @@ export function registerView() {
       el(
         "div",
         { class: "field" },
-        el("label", { for: "register-username" }, "Username"),
+        el("label", { for: "register-username" }, t("Username")),
         username,
       ),
       el(
         "div",
         { class: "field" },
-        el("label", { for: "register-email" }, "Email"),
+        el("label", { for: "register-email" }, t("Email")),
         email,
       ),
       el(
         "div",
         { class: "field" },
-        el("label", { for: "register-password" }, "Password"),
+        el("label", { for: "register-password" }, t("Password")),
         password,
       ),
       el(
         "div",
         { class: "field" },
-        el("label", { for: "register-confirm" }, "Confirm password"),
+        el("label", { for: "register-confirm" }, t("Confirm password")),
         confirm,
       ),
       el(
         "div",
         { class: "field" },
-        el("label", { for: "register-token" }, "Invite token"),
+        el("label", { for: "register-token" }, t("Invite token")),
         tokenInput,
         el(
           "p",
           { class: "register-hint" },
           fromClaim
-            ? "Single-use invite claimed from QR. Complete your account details below."
+            ? t("Single-use invite claimed from QR. Complete your account details below.")
             : prefillToken
-              ? "Filled from your invite link. Edit it if you paste a different token."
-              : "Registration is invite-only. Ask the RomM admin for an invite code or enable the signup QR.",
+              ? t("Filled from your invite link. Edit it if you paste a different token.")
+              : t("Registration is invite-only. Ask the RomM admin for an invite code or enable the signup QR."),
         ),
       ),
       errorSlot,
@@ -225,20 +230,23 @@ export function registerView() {
 
       setError("");
       if (!values.username || !values.email || !values.password || !values.token) {
-        setError("Fill in every field, including the invite token.");
+        setError(t("Fill in every field, including the invite token."));
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-        setError("Enter a valid email address.");
+        setError(t("Enter a valid email address."));
         return;
       }
       if (values.password !== confirm.value) {
-        setError("Passwords don't match.");
+        setError(t("Passwords don't match."));
         return;
       }
 
       submit.disabled = true;
-      submit.replaceChildren(el("span", { class: "spinner", "aria-hidden": "true" }), "Creating account…");
+      submit.replaceChildren(
+        el("span", { class: "spinner", "aria-hidden": "true" }),
+        t("Creating account…"),
+      );
 
       try {
         await api.register(values);
@@ -248,11 +256,11 @@ export function registerView() {
       } catch (error) {
         idleButton();
         if (error?.status === 422) {
-          setError(error.detail || "RomM rejected those details. Check every field and try again.");
+          setError(error.detail || t("RomM rejected those details. Check every field and try again."));
         } else if (error?.status === 0) {
-          setError("Can't reach the RomM server. Check your connection and try again.");
+          setError(t("Can't reach the RomM server. Check your connection and try again."));
         } else {
-          setError(error?.detail || error?.message || "Couldn't create the account. Try again.");
+          setError(error?.detail || error?.message || t("Couldn't create the account. Try again."));
         }
         return;
       }
@@ -270,8 +278,8 @@ export function registerView() {
         idleButton();
         const message =
           error?.status === 0
-            ? "Account created, but the server couldn't be reached to sign in. Try signing in from the login screen."
-            : error?.detail || error?.message || "Account created, but sign-in failed.";
+            ? t("Account created, but the server couldn't be reached to sign in. Try signing in from the login screen.")
+            : error?.detail || error?.message || t("Account created, but sign-in failed.");
         setError(message);
       }
     });
@@ -279,7 +287,7 @@ export function registerView() {
     function showWaiting() {
       password.value = "";
       confirm.value = "";
-      document.title = "Account created · Binus Arcade";
+      document.title = t("Account created · Binus Arcade");
 
       screen.replaceChildren(
         el(
@@ -288,17 +296,17 @@ export function registerView() {
           el(
             "section",
             { class: "login-card register-waiting" },
-            el("div", { class: "eyebrow" }, "Account created"),
-            el("h2", {}, "Waiting for activation"),
+            cardHead(t("Account created")),
+            el("h2", {}, t("Waiting for activation")),
             el(
               "p",
               { class: "note" },
-              "Your RomM account exists, but it doesn't have access yet. Ask the RomM admin to grant it in the server's user settings, then sign in.",
+              t("Your RomM account exists, but it doesn't have access yet. Ask the RomM admin to grant it in the server's user settings, then sign in."),
             ),
             el(
               "p",
               { class: "login-note" },
-              "New accounts start with no permissions until the admin promotes them.",
+              t("New accounts start with no permissions until the admin promotes them."),
             ),
             backLink(),
           ),
@@ -309,12 +317,12 @@ export function registerView() {
     const poster = el(
       "div",
       { class: "login-poster" },
-      el("div", { class: "eyebrow" }, "Join the arcade"),
-      el("h1", { class: "hero-title" }, el("span", { class: "marker-line" }, "Create account")),
+      el("div", { class: "eyebrow" }, t("Join the arcade")),
+      el("h1", { class: "hero-title" }, el("span", { class: "marker-line" }, t("Create account"))),
       el(
         "p",
         { class: "note" },
-        "Registration is invite-only. Open the invite link from the RomM admin to fill in your token automatically, or paste a token here.",
+        t("Registration is invite-only. Open the invite link from the RomM admin to fill in your token automatically, or paste a token here."),
       ),
     );
 
@@ -326,12 +334,12 @@ export function registerView() {
         el(
           "section",
           { class: "login-card" },
-          el("div", { class: "eyebrow" }, "New player"),
-          el("h2", {}, "Create your account"),
+          cardHead(t("New player")),
+          el("h2", {}, t("Account details")),
           el(
             "p",
             { class: "note" },
-            "Uses the same RomM account you'll sign in with. The password never touches storage.",
+            t("Uses the same RomM account you'll sign in with. The password never touches storage."),
           ),
           form,
           el("p", { class: "login-note register-back-row" }, backLink()),
@@ -351,13 +359,13 @@ export function registerView() {
         el(
           "section",
           { class: "login-card register-disabled", "data-register-disabled": "" },
-          el("div", { class: "eyebrow" }, "Invite required"),
-          el("h2", {}, "Ask the admin for a signup code"),
+          cardHead(t("Invite required")),
+          el("h2", {}, t("Ask the admin for a signup code")),
           el(
             "p",
             { class: "note" },
             note ||
-              "The signup QR panel is currently turned off. Ask the RomM admin to enable it or send you an invite code.",
+              t("The signup QR panel is currently turned off. Ask the RomM admin to enable it or send you an invite code."),
           ),
           el(
             "div",
@@ -372,7 +380,7 @@ export function registerView() {
                     on: { click: () => void loadPublicQr() },
                   },
                   icon("refresh", 16),
-                  "Check again",
+                  t("Check again"),
                 )
               : null,
             el(
@@ -383,7 +391,7 @@ export function registerView() {
                 "data-enter-token": "",
                 on: { click: () => renderForm("") },
               },
-              "I have a signup code",
+              t("I have a signup code"),
             ),
             backLink(),
           ),
@@ -402,9 +410,9 @@ export function registerView() {
         el(
           "section",
           { class: "login-card" },
-          el("div", { class: "eyebrow" }, "Invite QR"),
-          el("h2", {}, "Checking invite QR…"),
-          el("p", { class: "note" }, "Claiming your single-use invite token."),
+          cardHead(t("Invite QR")),
+          el("h2", {}, t("Checking invite QR…")),
+          el("p", { class: "note" }, t("Claiming your single-use invite token.")),
         ),
       ),
     );
@@ -417,7 +425,7 @@ export function registerView() {
       clearQueryParams();
       if (!res?.token) {
         renderDisabled({
-          note: "No invite token was returned. Ask the admin for a signup code.",
+          note: t("No invite token was returned. Ask the admin for a signup code."),
           showRefresh: hasSignupRelay(),
         });
         return;
@@ -428,8 +436,8 @@ export function registerView() {
       clearQueryParams();
       const message =
         error?.status === 403
-          ? error.detail || "The signup QR panel is turned off. Ask the admin for a signup code."
-          : error?.detail || "This invite QR was already used or expired.";
+          ? error.detail || t("The signup QR panel is turned off. Ask the admin for a signup code.")
+          : error?.detail || t("This invite QR was already used or expired.");
       screen.replaceChildren(
         el(
           "div",
@@ -437,8 +445,12 @@ export function registerView() {
           el(
             "section",
             { class: "login-card register-claim-error", "data-claim-error": "" },
-            el("div", { class: "eyebrow" }, "Invite unavailable"),
-            el("h2", {}, error?.status === 403 ? "Ask the admin for a signup code" : "QR code already used"),
+            cardHead(t("Invite unavailable")),
+            el(
+              "h2",
+              {},
+              error?.status === 403 ? t("Ask the admin for a signup code") : t("QR code already used"),
+            ),
             errorBox(message),
             el(
               "div",
@@ -453,7 +465,7 @@ export function registerView() {
                       on: { click: () => void loadPublicQr() },
                     },
                     icon("qr", 16),
-                    "Get fresh QR",
+                    t("Get fresh QR"),
                   )
                 : null,
               el(
@@ -464,7 +476,7 @@ export function registerView() {
                   "data-enter-token": "",
                   on: { click: () => renderForm("") },
                 },
-                "I have a signup code",
+                t("I have a signup code"),
               ),
               backLink(),
             ),
@@ -483,7 +495,7 @@ export function registerView() {
     const status = el(
       "p",
       { class: "note signup-status", "data-public-status": "" },
-      "Scan with another phone's camera or tap Use this invite. Updates automatically after each scan.",
+      t("Scan with another phone's camera or tap Use this invite. Updates automatically after each scan."),
     );
     const qrFrame = el("div", { class: "signup-qr-frame", "data-public-qr": "" });
     const useButton = el(
@@ -500,7 +512,7 @@ export function registerView() {
         },
       },
       icon("user", 16),
-      "Use this invite",
+      t("Use this invite"),
     );
 
     function drawQr(data) {
@@ -537,7 +549,7 @@ export function registerView() {
         }
         if (next.claimId !== currentClaimId) {
           drawQr(next);
-          status.textContent = "Previous QR was scanned — updated to a fresh QR.";
+          status.textContent = t("Previous QR was scanned — updated to a fresh QR.");
         }
       } catch {
         /* Keep current QR on transient poll hiccup. */
@@ -565,10 +577,15 @@ export function registerView() {
             el(
               "div",
               {},
-              el("div", { class: "eyebrow" }, "Create account"),
-              el("h2", {}, "Scan invite QR"),
+              el(
+                "div",
+                { class: "login-card-top" },
+                el("div", { class: "eyebrow" }, t("Create account")),
+                langSwitch(),
+              ),
+              el("h2", {}, t("Scan invite QR")),
             ),
-            el("div", { class: "signup-timer-wrap" }, el("span", { class: "note" }, "Expires in"), countdown),
+            el("div", { class: "signup-timer-wrap" }, el("span", { class: "note" }, t("Expires in")), countdown),
           ),
           status,
           el("div", { class: "signup-qr-card" }, qrFrame),
@@ -584,7 +601,7 @@ export function registerView() {
                 "data-enter-token": "",
                 on: { click: () => renderForm("") },
               },
-              "I have a signup code",
+              t("I have a signup code"),
             ),
             backLink(),
           ),
@@ -622,9 +639,9 @@ export function registerView() {
         el(
           "section",
           { class: "login-card" },
-          el("div", { class: "eyebrow" }, "Create account"),
-          el("h2", {}, "Checking signup QR…"),
-          el("p", { class: "note" }, "Asking the server if self-serve signup is open."),
+          cardHead(t("Create account")),
+          el("h2", {}, t("Checking signup QR…")),
+          el("p", { class: "note" }, t("Asking the server if self-serve signup is open.")),
         ),
       ),
     );
@@ -641,7 +658,7 @@ export function registerView() {
     } catch (error) {
       if (disposed || error?.name === "AbortError") return;
       renderDisabled({
-        note: "Couldn't reach the signup relay. Ask the admin for a signup code or try again.",
+        note: t("Couldn't reach the signup relay. Ask the admin for a signup code or try again."),
         showRefresh: true,
       });
     }
@@ -654,7 +671,7 @@ export function registerView() {
       void claimAndOpen(initialClaim);
     } else {
       renderDisabled({
-        note: "Signup relay is not configured on this build. Ask the admin for a direct invite link.",
+        note: t("Signup relay is not configured on this build. Ask the admin for a direct invite link."),
       });
     }
   } else {

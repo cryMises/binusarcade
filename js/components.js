@@ -8,6 +8,7 @@ import {
   ROMM_ORIGIN,
 } from "./config.js";
 import { isAdmin } from "./api.js";
+import { LOCALES, formatNumber, intlLocale, locale, t } from "./i18n.js";
 
 /* ------------------------------------------------------------------ */
 /* Tiny DOM toolkit                                                    */
@@ -108,13 +109,13 @@ const ICONS = [];
 
 export function formatPlaytime(ms) {
   const value = Number(ms) || 0;
-  if (value <= 0) return "0 min";
+  if (value <= 0) return t("0 min");
   const minutes = Math.round(value / 60_000);
-  if (minutes < 1) return "< 1 min";
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 1) return t("< 1 min");
+  if (minutes < 60) return t("{n} min", { n: minutes });
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+  return rest ? t("{n}h {m}m", { n: hours, m: rest }) : t("{n}h", { n: hours });
 }
 
 export function formatBytes(bytes) {
@@ -123,14 +124,18 @@ export function formatBytes(bytes) {
   const units = ["B", "KB", "MB", "GB", "TB"];
   const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
   const amount = value / 1024 ** index;
-  return `${amount >= 10 || index === 0 ? Math.round(amount) : amount.toFixed(1)} ${units[index]}`;
+  const digits = amount >= 10 || index === 0 ? 0 : 1;
+  return `${formatNumber(amount, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })} ${units[index]}`;
 }
 
 export function formatDate(value, { withTime = false } = {}) {
   if (!value) return "—";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(intlLocale(), {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -150,17 +155,17 @@ export function formatReleaseYear(value) {
 }
 
 export function timeAgo(value) {
-  if (!value) return "never";
+  if (!value) return t("never");
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "never";
+  if (Number.isNaN(date.getTime())) return t("never");
   const diff = Date.now() - date.getTime();
   const minutes = Math.round(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 1) return t("just now");
+  if (minutes < 60) return t("{n} min ago", { n: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("{n}h ago", { n: hours });
   const days = Math.round(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return t("{n}d ago", { n: days });
   return formatDate(date);
 }
 
@@ -176,12 +181,12 @@ export function sumSessionMs(sessions) {
 }
 
 export function errorText(error) {
-  if (!error) return "Something went sideways.";
+  if (!error) return t("Something went sideways.");
   if (isAbortError(error)) return "";
   if (error.status === 0 && error.retryable) {
-    return "Can't reach the RomM server. Check your connection and the CORS setting.";
+    return t("Can't reach the RomM server. Check your connection and the CORS setting.");
   }
-  return error.message || "Something went sideways.";
+  return error.message || t("Something went sideways.");
 }
 
 /* ------------------------------------------------------------------ */
@@ -197,7 +202,7 @@ export function fallbackCover(rom) {
       class: "fallback-cover",
       style: { "--cart": accent },
       role: "img",
-      "aria-label": `No cover for ${rom?.name || "this game"}`,
+      "aria-label": t("No cover for {name}", { name: rom?.name || t("this game") }),
     },
     el("span", { class: "fallback-platform" }, platformLabelOf(rom)),
     el("span", { class: "fallback-label" }, label),
@@ -211,7 +216,7 @@ export function cover(rom, { size = "small", eager = false, className = "" } = {
 
   const img = el("img", {
     src: url,
-    alt: `Cover art for ${rom.name || rom.fs_name_no_ext || "game"}`,
+    alt: t("Cover art for {name}", { name: rom.name || rom.fs_name_no_ext || t("game") }),
     loading: eager ? "eager" : "lazy",
     decoding: "async",
   });
@@ -227,7 +232,7 @@ export function shortName(rom) {
     rom?.fs_name_no_ext ||
     rom?.fs_name_no_tags ||
     rom?.fs_name ||
-    "Untitled cartridge"
+    t("Untitled cartridge")
   );
 }
 
@@ -249,7 +254,7 @@ export function gameCard(rom, index = 0) {
       class: "game-card",
       href: `#/game/${encodeURIComponent(rom.id)}`,
       style: { "--cart": accent },
-      "aria-label": `${shortName(rom)} on ${platformLabelOf(rom)}`,
+      "aria-label": `${shortName(rom)} · ${platformLabelOf(rom)}`,
     },
     el("div", { class: "game-cover" }, coverNode),
     el("span", { class: "game-title" }, shortName(rom)),
@@ -257,7 +262,7 @@ export function gameCard(rom, index = 0) {
       "span",
       { class: "game-meta" },
       el("span", { class: "dot", style: { "--cart": accent } }),
-      meta || "Game",
+      meta || t("Game"),
       rating ? ` · ${Math.round(rating)}%` : "",
     ),
   );
@@ -291,7 +296,7 @@ export function platformCart(platform) {
       class: "cart",
       href: `#/platform/${encodeURIComponent(platform.slug)}`,
       style: { "--cart": accent },
-      "aria-label": `${platform.display_name || platform.name}: ${platform.rom_count} games`,
+      "aria-label": `${platform.display_name || platform.name}: ${platform.rom_count} ${t("games")}`,
     },
     el(
       "div",
@@ -303,8 +308,8 @@ export function platformCart(platform) {
     el(
       "div",
       { class: "cart-delta" },
-      el("span", {}, "Open"),
-      el("span", {}, `${platform.rom_count || 0} games`),
+      el("span", {}, t("Open")),
+      el("span", {}, `${platform.rom_count || 0} ${t("games")}`),
     ),
   );
 }
@@ -328,7 +333,7 @@ export function sectionHead(title, action) {
   );
 }
 
-export function moreLink(href, text = "See all") {
+export function moreLink(href, text = t("See all")) {
   return el(
     "a",
     { class: "section-link", href },
@@ -345,36 +350,36 @@ export function emptyState({ title, note, action, tone = "" }) {
   return el(
     "div",
     { class: `empty-state ${tone}` },
-    el("h2", {}, title || "Nothing here yet"),
-    el("p", { class: "note" }, note || "No matching items were found."),
+    el("h2", {}, title || t("Nothing here yet")),
+    el("p", { class: "note" }, note || t("No matching items were found.")),
     action || null,
   );
 }
 
 export function errorState(error, retry) {
-  const message = errorText(error) || "That request was cancelled.";
+  const message = errorText(error) || t("That request was cancelled.");
   const action = retry
     ? el(
         "button",
         { class: "btn btn-keycap btn-yellow", type: "button", on: { click: retry } },
         icon("refresh", 18),
-        "Try again",
+        t("Try again"),
       )
     : el(
         "a",
         { class: "btn btn-keycap btn-yellow", href: "#/" },
-        "Back to Home",
+        t("Back to Home"),
       );
 
   return emptyState({
-    title: "Couldn't load this section",
+    title: t("Couldn't load this section"),
     note: message,
     action,
     tone: "error-card",
   });
 }
 
-export function loadingLine(text = "Loading…") {
+export function loadingLine(text = t("Loading…")) {
   return el(
     "div",
     { class: "loading-line", role: "status" },
@@ -434,7 +439,7 @@ export function closeModal() {
   previousFocus?.focus?.();
 }
 
-export function openModal({ title, content, actions = [], label = "Dialog" }) {
+export function openModal({ title, content, actions = [], label = t("Dialog") }) {
   closeModal();
 
   const titleId = `modal-title-${Math.random().toString(36).slice(2)}`;
@@ -471,7 +476,7 @@ export function openModal({ title, content, actions = [], label = "Dialog" }) {
           {
             class: "icon-btn",
             type: "button",
-            "aria-label": "Close dialog",
+            "aria-label": t("Close dialog"),
             on: { click: closeModal },
           },
           icon("close", 20),
@@ -521,9 +526,37 @@ export function screenshotModal(path, alt) {
   const url = screenshotUrl(path);
   if (!url) return;
   openModal({
-    title: alt || "Screenshot",
-    content: el("img", { src: url, alt: alt || "Game screenshot" }),
+    title: alt || t("Screenshot"),
+    content: el("img", { src: url, alt: alt || t("Game screenshot") }),
   });
+}
+
+/* Language switch pill. Global clicks are handled once in js/app.js. */
+export function langSwitch({ label } = {}) {
+  const group = el("div", {
+    class: "lang-switch",
+    role: "group",
+    "aria-label": label || t("Language"),
+  });
+
+  for (const code of LOCALES) {
+    group.append(
+      el(
+        "button",
+        {
+          class: "lang-option",
+          type: "button",
+          "data-lang": code,
+          lang: code,
+          "aria-pressed": String(locale() === code),
+          title: code === "id" ? "Bahasa Indonesia" : "English",
+        },
+        code === "id" ? "ID" : "EN",
+      ),
+    );
+  }
+
+  return group;
 }
 
 /* ------------------------------------------------------------------ */
@@ -535,14 +568,14 @@ export function siteFooter() {
   return el(
     "footer",
     { class: "site-footer" },
-    el("span", { class: "note" }, "Self-hosted RomM underneath. Binus Arcade on top."),
+    el("span", { class: "note" }, t("Self-hosted RomM underneath. Binus Arcade on top.")),
     link(
       `${ROMM_ORIGIN}`,
       { class: "footer-link" },
-      "Open stock RomM",
+      t("Open stock RomM"),
       icon("external", 14),
     ),
-    admin ? link(stockAdminUrl(), {}, "Admin", icon("external", 14)) : null,
+    admin ? link(stockAdminUrl(), {}, t("Admin"), icon("external", 14)) : null,
   );
 }
 

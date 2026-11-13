@@ -9,6 +9,7 @@ import {
   setSession,
   updateSession,
 } from "./api.js";
+import { t } from "./i18n.js";
 
 export { getSession, hasSession, isAdmin };
 
@@ -73,7 +74,7 @@ export async function logout() {
 }
 
 export function userLabel(user = getSession()?.user) {
-  return user?.username || "Player";
+  return user?.username || t("Player");
 }
 
 export function userInitials(user = getSession()?.user) {

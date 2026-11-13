@@ -26,6 +26,7 @@ import {
   stockAdminUrl,
   stockRomUrl,
 } from "../config.js";
+import { t, tn } from "../i18n.js";
 
 function daysSince(date) {
   if (!date) return null;
@@ -43,14 +44,14 @@ export function detailView(ctx) {
       "a",
       { class: "back-link", href: "#/" },
       icon("arrow-left", 17),
-      "Home",
+      t("Home"),
     ),
-    el("div", { class: "detail-loading" }, loadingLine("Loading game details…")),
+    el("div", { class: "detail-loading" }, loadingLine(t("Loading game details…"))),
   );
 
   (async () => {
     if (!Number.isFinite(id) || id <= 0) {
-      showError(root, new Error("That game id doesn't look right."));
+      showError(root, new Error(t("That game id doesn't look right.")));
       return;
     }
 
@@ -64,8 +65,8 @@ export function detailView(ctx) {
 
     const platformSlug = platformSlugOf(rom);
     const accent = colorForPlatform(platformSlug, platformLabelOf(rom));
-    const name = rom.name || rom.fs_name_no_ext || "Untitled cartridge";
-    document.title = `${name} · Binus Arcade`;
+    const name = rom.name || rom.fs_name_no_ext || t("Untitled cartridge");
+    document.title = `${name} · ${t("Binus Arcade")}`;
 
     const [savesResult, statesResult, sessionsResult] = await Promise.allSettled([
       api.saves(rom.id),
@@ -124,10 +125,10 @@ function buildHero({ rom, platformSlug, accent, name }) {
   if (year) chips.append(el("span", { class: "chip-topic" }, year));
   if (playerCount) {
     chips.append(
-      el("span", { class: "chip-topic" }, `${playerCount} player${String(playerCount) === "1" ? "" : "s"}`),
+      el("span", { class: "chip-topic" }, tn(playerCount, "1 player", "{n} players", { n: playerCount })),
     );
   }
-  if (rating) chips.append(el("span", { class: "chip-topic tone-yellow" }, `${Math.round(rating)}% rating`));
+  if (rating) chips.append(el("span", { class: "chip-topic tone-yellow" }, t("{n}% rating", { n: Math.round(rating) })));
   genres.forEach((genre) => chips.append(el("span", { class: "chip-topic" }, genre)));
   if (rom.metadatum?.regions?.length) {
     chips.append(el("span", { class: "chip-topic" }, rom.metadatum.regions.join(", ")));
@@ -145,7 +146,6 @@ function buildHero({ rom, platformSlug, accent, name }) {
     el(
       "div",
       { class: "detail-info" },
-      el("div", { class: "eyebrow" }, "Game sleeve"),
       el("h1", { class: "detail-title" }, name),
       el(
         "div",
@@ -156,9 +156,9 @@ function buildHero({ rom, platformSlug, accent, name }) {
           shortPlatformLabel(rom),
         ),
         rom.is_identified === false
-          ? el("span", { class: "rubber-stamp red" }, "Unidentified")
-          : el("span", { class: "rubber-stamp green" }, "In the vault"),
-        rom.has_file_on_disk === false ? el("span", { class: "rubber-stamp red" }, "File missing") : null,
+          ? el("span", { class: "rubber-stamp red" }, t("Unidentified"))
+          : el("span", { class: "rubber-stamp green" }, t("In library")),
+        rom.has_file_on_disk === false ? el("span", { class: "rubber-stamp red" }, t("File missing")) : null,
       ),
       chips,
       el(
@@ -172,14 +172,14 @@ function buildHero({ rom, platformSlug, accent, name }) {
             target: "_blank",
             rel: "noopener noreferrer",
           },
-          "Open in stock RomM",
+          t("Open in stock RomM"),
           icon("external", 14),
         ),
         rom.has_manual && api.assetUrl(rom.path_manual)
           ? el(
               "a",
               { class: "btn btn-ghost", href: api.assetUrl(rom.path_manual), target: "_blank", rel: "noopener noreferrer" },
-              "Manual",
+              t("Manual"),
               icon("book", 14),
             )
           : null,
@@ -187,7 +187,7 @@ function buildHero({ rom, platformSlug, accent, name }) {
       el(
         "p",
         { class: "detail-summary" },
-        rom.summary || "No description was scraped for this game yet.",
+        rom.summary || t("No description was scraped for this game yet."),
       ),
     ),
   );
@@ -196,16 +196,28 @@ function buildHero({ rom, platformSlug, accent, name }) {
 function buildLedgers({ rom, playtime, lastPlayed, saves, states }) {
   return el(
     "section",
-    { class: "detail-ledger", "aria-label": "Game facts" },
-    miniLedger("Playtime", formatPlaytime(playtime), `${sessionsText(playtime)}`),
-    miniLedger("Last played", lastPlayed ? timeAgo(lastPlayed) : "Never", lastPlayed ? formatDate(lastPlayed, { withTime: true }) : "None yet"),
-    miniLedger("Saves", String(saves.length), saves.length ? formatDate(saves[0].updated_at || saves[0].created_at) : "None on RomM"),
-    miniLedger("States", String(states.length), states.length ? formatDate(states[0].updated_at || states[0].created_at) : "None on RomM"),
+    { class: "detail-ledger", "aria-label": t("Game facts") },
+    miniLedger(t("Playtime"), formatPlaytime(playtime), sessionsText(playtime)),
+    miniLedger(
+      t("Last played"),
+      lastPlayed ? timeAgo(lastPlayed) : t("Never"),
+      lastPlayed ? formatDate(lastPlayed, { withTime: true }) : t("None yet"),
+    ),
+    miniLedger(
+      t("Saves"),
+      String(saves.length),
+      saves.length ? formatDate(saves[0].updated_at || saves[0].created_at) : t("None on RomM"),
+    ),
+    miniLedger(
+      t("States"),
+      String(states.length),
+      states.length ? formatDate(states[0].updated_at || states[0].created_at) : t("None on RomM"),
+    ),
   );
 }
 
 function sessionsText(playtime) {
-  return playtime ? "across play sessions" : "session clock";
+  return playtime ? t("across play sessions") : t("session clock");
 }
 
 function buildTabs({ rom, saves, states, sessions, playtime }) {
@@ -215,27 +227,32 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
     el(
       "div",
       { class: "block" },
-      el("h2", { class: "marker marker-sm" }, "Game info"),
+      el("h2", { class: "marker marker-sm" }, t("Game info")),
       el(
         "div",
         { class: "ledger" },
-        el("div", { class: "ledger-label" }, "File"),
+        el("div", { class: "ledger-label" }, t("File")),
         el("div", { class: "ledger-value", style: { "font-size": "1rem", "overflow-wrap": "anywhere" } }, rom.fs_name || "—"),
         el(
           "div",
           { class: "ledger-note" },
-          `${formatBytes(rom.fs_size_bytes)} · ${rom.fs_extension || "unknown format"} · ${sessions.length} session${sessions.length === 1 ? "" : "s"}`,
+          `${formatBytes(rom.fs_size_bytes)} · ${rom.fs_extension || t("unknown format")} · ${tn(sessions.length, "1 session", "{n} sessions", { n: sessions.length })}`,
         ),
       ),
       el(
         "div",
         { class: "ledger" },
-        el("div", { class: "ledger-label" }, "Play activity"),
-        el("div", { class: "ledger-split" }, el("span", {}, `${formatPlaytime(playtime)} played`), el("span", {}, `${sessions.length} sessions`)),
-        el("div", { class: "ledger-note" }, "Synced from RomM play sessions."),
+        el("div", { class: "ledger-label" }, t("Play activity")),
+        el(
+          "div",
+          { class: "ledger-split" },
+          el("span", {}, t("{time} played", { time: formatPlaytime(playtime) })),
+          el("span", {}, tn(sessions.length, "1 session", "{n} sessions", { n: sessions.length })),
+        ),
+        el("div", { class: "ledger-note" }, t("Synced from RomM play sessions.")),
       ),
       rom.metadatum?.franchises?.length
-        ? el("div", { class: "ledger" }, el("div", { class: "ledger-label" }, "Franchise"), el("div", { class: "ledger-value", style: { "font-size": "1rem" } }, rom.metadatum.franchises.join(", ")))
+        ? el("div", { class: "ledger" }, el("div", { class: "ledger-label" }, t("Franchise")), el("div", { class: "ledger-value", style: { "font-size": "1rem" } }, rom.metadatum.franchises.join(", ")))
         : null,
     ),
     buildScreenshots(rom),
@@ -253,11 +270,11 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
     el(
       "div",
       { class: "block" },
-      el("h2", { class: "marker marker-sm" }, "Personal"),
+      el("h2", { class: "marker marker-sm" }, t("Personal")),
       el(
         "p",
         { class: "note" },
-        "Ratings, backlog, completion and custom collections are managed in stock RomM. The button below opens this game there.",
+        t("Ratings, backlog, completion and custom collections are managed in stock RomM. The button below opens this game there."),
       ),
       el(
         "div",
@@ -265,7 +282,7 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
         el(
           "a",
           { class: "btn btn-keycap-sm btn-yellow", href: stockRomUrl(rom.id), target: "_blank", rel: "noopener noreferrer" },
-          "Open in RomM",
+          t("Open in RomM"),
           icon("external", 14),
         ),
       ),
@@ -276,7 +293,7 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
 
   const tabButtons = el(
     "div",
-    { class: "tab-list", role: "tablist", "aria-label": "Game details" },
+    { class: "tab-list", role: "tablist", "aria-label": t("Game details") },
     el(
       "button",
       {
@@ -287,7 +304,7 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
         "aria-selected": "true",
         "aria-controls": "tab-about",
       },
-      "About",
+      t("About"),
     ),
     el(
       "button",
@@ -299,7 +316,7 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
         "aria-selected": "false",
         "aria-controls": "tab-personal",
       },
-      "Personal",
+      t("Personal"),
     ),
   );
 
@@ -326,20 +343,21 @@ function buildScreenshots(rom) {
     .filter((item) => item.url);
   if (!usable.length) return null;
 
-  const rail = el("div", { class: "screenshot-rail", "aria-label": "Screenshots" });
+  const rail = el("div", { class: "screenshot-rail", "aria-label": t("Screenshots") });
   usable.slice(0, 12).forEach((item, index) => {
+    const label = t("{name} screenshot {n}", { name: rom.name || t("Game"), n: index + 1 });
     rail.append(
       el(
         "button",
         {
           class: "screenshot",
           type: "button",
-          "aria-label": `Open screenshot ${index + 1}`,
-          on: { click: () => screenshotModal(item.path, `${rom.name || "Game"} screenshot ${index + 1}`) },
+          "aria-label": t("Open screenshot {n}", { n: index + 1 }),
+          on: { click: () => screenshotModal(item.path, label) },
         },
         el("img", {
           src: item.url,
-          alt: `${rom.name || "Game"} screenshot ${index + 1}`,
+          alt: label,
           loading: "lazy",
           decoding: "async",
         }),
@@ -350,7 +368,7 @@ function buildScreenshots(rom) {
   return el(
     "section",
     { class: "section" },
-    el("div", { class: "section-head" }, el("h2", { class: "marker marker-sm" }, "Screenshots")),
+    el("div", { class: "section-head" }, el("h2", { class: "marker marker-sm" }, t("Screenshots"))),
     rail,
   );
 }
@@ -360,7 +378,7 @@ function buildSavesBlock(saves) {
   return el(
     "section",
     { class: "section" },
-    el("div", { class: "section-head" }, el("h2", { class: "marker marker-sm" }, "Saves")),
+    el("div", { class: "section-head" }, el("h2", { class: "marker marker-sm" }, t("Saves"))),
     buildSaveList(saves, "save"),
   );
 }
@@ -370,7 +388,7 @@ function buildStatesBlock(states) {
   return el(
     "section",
     { class: "section" },
-    el("div", { class: "section-head" }, el("h2", { class: "marker marker-sm" }, "Save states")),
+    el("div", { class: "section-head" }, el("h2", { class: "marker marker-sm" }, t("Save states"))),
     buildSaveList(states, "state"),
   );
 }
@@ -386,11 +404,11 @@ function buildSaveList(rows, kind) {
         el(
           "div",
           { class: "save-row-copy" },
-          el("strong", {}, row.file_name || `${kind} ${row.id}`),
+          el("strong", {}, row.file_name || t("{kind} {id}", { kind: t(kind === "save" ? "save" : "state"), id: row.id })),
           el(
             "span",
             {},
-            `${row.emulator || "emulator"} · ${formatBytes(row.file_size_bytes)} · ${formatDate(row.updated_at || row.created_at, { withTime: true })}`,
+            `${row.emulator || t("emulator")} · ${formatBytes(row.file_size_bytes)} · ${formatDate(row.updated_at || row.created_at, { withTime: true })}`,
           ),
         ),
         el(
@@ -410,9 +428,9 @@ function buildSaveList(rows, kind) {
                   link.click();
                   link.remove();
                   setTimeout(() => URL.revokeObjectURL(href), 30_000);
-                  toast(`${kind === "save" ? "Save" : "State"} downloaded.`, { tone: "success" });
+                  toast(t("{kind} downloaded.", { kind: t(kind === "save" ? "Save" : "State") }), { tone: "success" });
                 } catch (error) {
-                  toast(error.message || "Download failed.", { tone: "error" });
+                  toast(error.message || t("Download failed."), { tone: "error" });
                 } finally {
                   button.disabled = false;
                 }
@@ -420,7 +438,7 @@ function buildSaveList(rows, kind) {
             },
           },
           icon("download", 16),
-          "Download",
+          t("Download"),
         ),
       ),
     );
@@ -435,19 +453,19 @@ function buildFootlinks(rom) {
     el(
       "a",
       { href: stockRomUrl(rom.id), target: "_blank", rel: "noopener noreferrer" },
-      "Open in stock RomM",
+      t("Open in stock RomM"),
       icon("external", 14),
     ),
     el(
       "a",
       { href: stockAdminUrl(), target: "_blank", rel: "noopener noreferrer" },
-      "Admin",
+      t("Admin"),
       icon("external", 14),
     ),
     el(
       "a",
       { href: `#/platform/${encodeURIComponent(rom.platform_slug || platformSlugOf(rom))}` },
-      "More on this system",
+      t("More on this system"),
       icon("arrow-right", 14),
     ),
   );
@@ -456,7 +474,7 @@ function buildFootlinks(rom) {
 function showError(root, error) {
   clear(root);
   root.append(
-    el("a", { class: "back-link", href: "#/" }, icon("arrow-left", 17), "Home"),
+    el("a", { class: "back-link", href: "#/" }, icon("arrow-left", 17), t("Home")),
     errorState(error, () => ctxRetry()),
   );
 }

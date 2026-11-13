@@ -9,6 +9,7 @@ import {
   skeletonGrid,
 } from "../components.js";
 import { PAGE_SIZE } from "../config.js";
+import { t, tn } from "../i18n.js";
 
 const STATUS_OPTIONS = [
   ["incomplete", "In progress"],
@@ -95,14 +96,18 @@ export function libraryView(ctx) {
   let queryToken = 0;
   let controller = null;
 
-  const title = el("h1", { class: "marker" }, platformSlug ? "Loading platform…" : "Library");
-  const subtitle = el("p", { class: "note" }, "Every game in the library.");
+  const title = el(
+    "h1",
+    { class: "marker" },
+    t(platformSlug ? "Loading platform…" : "Library"),
+  );
+  const subtitle = el("p", { class: "note" }, t("Every game in the library."));
   const headNotes = el("div", { class: "library-head-notes" });
 
   const head = el(
     "header",
     { class: "library-head" },
-    el("div", { class: "eyebrow" }, platformSlug ? "System shelf" : "All systems"),
+    el("div", { class: "eyebrow" }, t(platformSlug ? "System shelf" : "All systems")),
     title,
     subtitle,
     headNotes,
@@ -113,18 +118,18 @@ export function libraryView(ctx) {
     type: "search",
     name: "q",
     value: state.q,
-    placeholder: platformSlug ? "Search this shelf…" : "Search the library…",
+    placeholder: t(platformSlug ? "Search this shelf…" : "Search the library…"),
     autocomplete: "off",
-    "aria-label": "Search games",
+    "aria-label": t("Search games"),
     enterkeyhint: "search",
     id: "library-search",
   });
 
   const sortSelect = el(
     "select",
-    { class: "input", "aria-label": "Sort games" },
+    { class: "input", "aria-label": t("Sort games") },
     ...SORTS.map(([value, label]) =>
-      el("option", { value, selected: state.sort === value }, label),
+      el("option", { value, selected: state.sort === value }, t(label)),
     ),
   );
 
@@ -136,7 +141,7 @@ export function libraryView(ctx) {
       "summary",
       {},
       icon("filter", 18),
-      "Filters",
+      t("Filters"),
       el("span", { class: "summary-caret", "aria-hidden": "true" }, "⌄"),
     ),
     filterBody,
@@ -152,13 +157,13 @@ export function libraryView(ctx) {
     el(
       "div",
       { class: "field" },
-      el("label", { class: "sr-only", for: "library-search" }, "Search"),
+      el("label", { class: "sr-only", for: "library-search" }, t("Search")),
       searchInput,
     ),
     el(
       "div",
       { class: "sort-field" },
-      el("span", { class: "field-label" }, "Sort"),
+      el("span", { class: "field-label" }, t("Sort")),
       sortSelect,
     ),
   );
@@ -209,9 +214,9 @@ export function libraryView(ctx) {
     clear(filterBody);
 
     if (!platformSlug) {
-      const group = el("div", { class: "facet-group" }, el("h3", {}, "Platform"));
+      const group = el("div", { class: "facet-group" }, el("h3", {}, t("Platform")));
       const row = el("div", { class: "facet-row facet-scroll" });
-      row.append(chip("All systems", !state.platform, () => updateForFilter("platform", "")));
+      row.append(chip(t("All systems"), !state.platform, () => updateForFilter("platform", "")));
       platforms.forEach((platform) => {
         const slug = platform.slug || platform.fs_slug;
         const name = platform.display_name || platform.name || slug;
@@ -224,9 +229,9 @@ export function libraryView(ctx) {
     }
 
     if (filters?.genres?.length) {
-      const group = el("div", { class: "facet-group" }, el("h3", {}, "Genre"));
+      const group = el("div", { class: "facet-group" }, el("h3", {}, t("Genre")));
       const row = el("div", { class: "facet-row facet-scroll" });
-      row.append(chip("Any genre", !state.genre, () => updateForFilter("genre", "")));
+      row.append(chip(t("Any genre"), !state.genre, () => updateForFilter("genre", "")));
       filters.genres.forEach((genre) => {
         row.append(
           chip(genre, state.genre === genre, () => updateForFilter("genre", genre), "tone-yellow"),
@@ -237,13 +242,13 @@ export function libraryView(ctx) {
     }
 
     const players = filters?.player_counts?.length ? filters.player_counts : ["1", "2", "3", "4"];
-    const playersGroup = el("div", { class: "facet-group" }, el("h3", {}, "Players"));
+    const playersGroup = el("div", { class: "facet-group" }, el("h3", {}, t("Players")));
     const playersRow = el("div", { class: "facet-row" });
-    playersRow.append(chip("Any", !state.players, () => updateForFilter("players", "")));
+    playersRow.append(chip(t("Any"), !state.players, () => updateForFilter("players", "")));
     players.forEach((count) => {
       playersRow.append(
         chip(
-          `${count} player${String(count) === "1" ? "" : "s"}`,
+          tn(Number(count), "1 player", "{n} players"),
           state.players === String(count),
           () => updateForFilter("players", String(count)),
           "tone-mint",
@@ -253,12 +258,12 @@ export function libraryView(ctx) {
     playersGroup.append(playersRow);
     filterBody.append(playersGroup);
 
-    const statusGroup = el("div", { class: "facet-group" }, el("h3", {}, "Play status"));
+    const statusGroup = el("div", { class: "facet-group" }, el("h3", {}, t("Play status")));
     const statusRow = el("div", { class: "facet-row" });
-    statusRow.append(chip("Any status", !state.status, () => updateForFilter("status", "")));
+    statusRow.append(chip(t("Any status"), !state.status, () => updateForFilter("status", "")));
     STATUS_OPTIONS.forEach(([value, label]) => {
       statusRow.append(
-        chip(label, state.status === value, () => updateForFilter("status", value), "tone-pink"),
+        chip(t(label), state.status === value, () => updateForFilter("status", value), "tone-pink"),
       );
     });
     statusGroup.append(statusRow);
@@ -272,8 +277,8 @@ export function libraryView(ctx) {
           "span",
           { class: "note" },
           activeFilterCount()
-            ? `${activeFilterCount()} filter${activeFilterCount() === 1 ? "" : "s"} on`
-            : "No filters on",
+            ? tn(activeFilterCount(), "1 filter on", "{n} filters on")
+            : t("No filters on"),
         ),
         activeFilterCount()
           ? el(
@@ -293,7 +298,7 @@ export function libraryView(ctx) {
                   },
                 },
               },
-              "Clear filters",
+              t("Clear filters"),
             )
           : null,
       ),
@@ -314,7 +319,7 @@ export function libraryView(ctx) {
     if (reset) {
       items = [];
       offset = 0;
-      setCount("Loading the shelf…");
+      setCount(t("Loading the shelf…"));
       gridSlot.replaceChildren(skeletonGrid(12));
       clear(loadMoreWrap);
     }
@@ -336,7 +341,7 @@ export function libraryView(ctx) {
       if (reset) {
         items = [];
         gridSlot.replaceChildren(errorState(error, () => load({ reset: true })));
-        setCount("The shelf didn't load.");
+        setCount(t("The shelf didn't load."));
         clear(loadMoreWrap);
       }
     } finally {
@@ -348,18 +353,20 @@ export function libraryView(ctx) {
     if (!items.length) {
       gridSlot.replaceChildren(
         emptyState({
-          title: state.q ? "No games matched" : "No games here yet",
+          title: t(state.q ? "No games matched" : "No games here yet"),
           note: state.q
-            ? `Nothing matched “${state.q}”. Try a shorter search or clear the filters.`
-            : "Try a different filter. If RomM has games here, they will show up after the next scan.",
+            ? t("Nothing matched “{q}”. Try a shorter search or clear the filters.", { q: state.q })
+            : t(
+                "Try a different filter. If RomM has games here, they will show up after the next scan.",
+              ),
           action: el(
             "a",
             { class: "btn btn-keycap btn-yellow", href: platformSlug ? `#/platform/${platformSlug}` : "#/library" },
-            "Reset filters",
+            t("Reset filters"),
           ),
         }),
       );
-      setCount("0 games");
+      setCount(t("0 games"));
       clear(loadMoreWrap);
       return;
     }
@@ -369,7 +376,9 @@ export function libraryView(ctx) {
     gridSlot.replaceChildren(grid);
 
     setCount(
-      total > items.length ? `Showing ${items.length} of ${total} games` : `${total} game${total === 1 ? "" : "s"}`,
+      total > items.length
+        ? t("Showing {shown} of {total} games", { shown: items.length, total })
+        : tn(total, "1 game", "{n} games"),
     );
 
     clear(loadMoreWrap);
@@ -382,7 +391,7 @@ export function libraryView(ctx) {
             type: "button",
             on: { click: () => load() },
           },
-          "Load more",
+          t("Load more"),
         ),
       );
     }
@@ -427,16 +436,18 @@ export function libraryView(ctx) {
     if (platformSlug) {
       currentPlatform = matchPlatform(platforms, platformSlug);
       if (!currentPlatform) {
-        title.textContent = "Shelf not found";
-        subtitle.textContent = "That system isn't in this RomM library.";
+        title.textContent = t("Shelf not found");
+        subtitle.textContent = t("That system isn't in this RomM library.");
         gridSlot.replaceChildren(
           emptyState({
-            title: "No such system",
-            note: "The platform slug doesn't match anything RomM returned. Head back and pick a system from the shelf.",
-            action: el("a", { class: "btn btn-keycap btn-yellow", href: "#/library" }, "All systems"),
+            title: t("No such system"),
+            note: t(
+              "The platform slug doesn't match anything RomM returned. Head back and pick a system from the shelf.",
+            ),
+            action: el("a", { class: "btn btn-keycap btn-yellow", href: "#/library" }, t("All systems")),
           }),
         );
-        setCount("0 games");
+        setCount(t("0 games"));
         return;
       }
 
@@ -444,26 +455,34 @@ export function libraryView(ctx) {
       document.title = `${title.textContent} · Binus Arcade`;
       subtitle.textContent =
         currentPlatform.description ||
-        `${currentPlatform.rom_count || 0} games on this shelf.`;
+        tn(Number(currentPlatform.rom_count) || 0, "1 game on this shelf.", "{n} games on this shelf.");
       clear(headNotes);
       headNotes.append(
-        el("span", { class: "washi-tape" }, `${currentPlatform.rom_count || 0} games`),
-        el("span", { class: "washi-tape mint" }, currentPlatform.slug || currentPlatform.fs_slug || "Platform"),
+        el(
+          "span",
+          { class: "washi-tape" },
+          tn(Number(currentPlatform.rom_count) || 0, "1 game", "{n} games"),
+        ),
+        el(
+          "span",
+          { class: "washi-tape mint" },
+          currentPlatform.slug || currentPlatform.fs_slug || t("Platform"),
+        ),
       );
     } else {
       const total = platforms.reduce((sum, platform) => sum + (Number(platform.rom_count) || 0), 0);
       clear(headNotes);
       if (platforms.length) {
         headNotes.append(
-          el("span", { class: "washi-tape" }, `${platforms.length} systems`),
-          el("span", { class: "washi-tape mint" }, `${total} games`),
+          el("span", { class: "washi-tape" }, tn(platforms.length, "1 system", "{n} systems")),
+          el("span", { class: "washi-tape mint" }, tn(total, "1 game", "{n} games")),
         );
       }
     }
 
     if (!platforms.length && platformsResult.status === "rejected") {
       gridSlot.replaceChildren(errorState(platformsResult.reason, () => location.reload()));
-      setCount("The shelf didn't load.");
+      setCount(t("The shelf didn't load."));
       return;
     }
 

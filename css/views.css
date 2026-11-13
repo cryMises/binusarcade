@@ -1109,6 +1109,10 @@
   color: var(--on-surface-faint);
 }
 
+.profile-lang-row .lang-switch {
+  margin-left: auto;
+}
+
 .profile-row-icon {
   display: inline-grid;
   width: 34px;
@@ -1382,6 +1386,18 @@
   box-shadow: var(--shadow-2);
 }
 
+.login-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.login-card-top .eyebrow {
+  margin: 0;
+}
+
 .login-card h2 {
   margin: 6px 0 4px;
   font-size: 1.375rem;
@@ -1425,6 +1441,63 @@
 
 .login-note a {
   color: var(--primary);
+}
+
+/* Collapsible sign-in help — keeps server jargon out of the way */
+.login-help summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  color: var(--on-surface-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  list-style: none;
+}
+
+.login-help summary::-webkit-details-marker {
+  display: none;
+}
+
+.login-help summary::after {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 140ms var(--ease);
+}
+
+.login-help[open] summary::after {
+  transform: rotate(225deg);
+}
+
+.login-help summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.login-help p {
+  margin: 2px 0 4px;
+}
+
+.login-help code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--chip-bg);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.6875rem;
+}
+
+.login-help-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  font-weight: 600;
 }
 
 .login-note code {
@@ -2136,5 +2209,17 @@ a.stat-card:hover {
 
   .login-card {
     padding: 18px;
+  }
+}
+
+/* ---------- Language switch placement ---------- */
+
+.topbar .lang-switch {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .topbar .lang-switch {
+    display: inline-flex;
   }
 }

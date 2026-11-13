@@ -320,9 +320,19 @@ async function newPage(
     inviteOptions = null,
     installClock = false,
     relayUrl = "",
+    lang = "en",
   } = {},
 ) {
   const context = await browser.newContext({ viewport });
+  await context.addInitScript((value) => {
+    try {
+      if (localStorage.getItem("binusarcade.lang") === null) {
+        localStorage.setItem("binusarcade.lang", value);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, lang);
   if (relayUrl !== null) {
     const configBody = readFileSync(join(root, "js", "config.js"), "utf8").replace(
       /export const SIGNUP_RELAY_URL = ".*?";/,
@@ -845,6 +855,53 @@ try {
     assert(widths.scroll <= widths.inner + 1, `home has no horizontal scroll at 1280px (${widths.scroll}/${widths.inner})`);
     assert(!(await page.isVisible(".bottom-nav")), "bottom nav is hidden on desktop");
     await page.screenshot({ path: join(screenshots, "home-1280.png"), fullPage: true });
+    await context.close();
+  }
+
+  /* Bilingual UI: Indonesian by default, English on demand */
+  {
+    const { context, page } = await newPage(browser, { signedIn: false, lang: "id" });
+    await page.goto(base);
+    await page.waitForSelector(".login-card", { timeout: 10_000 });
+    assert((await page.getAttribute("html", "lang")) === "id", "html lang defaults to Indonesian");
+    assert(
+      await page.isVisible('button[data-lang="id"][aria-pressed="true"]'),
+      "Indonesian pill is selected by default",
+    );
+    assert(await page.isVisible("text=Masuk"), "login screen renders Indonesian copy");
+    assert(await page.isVisible("text=Buat akun"), "create-account link is Indonesian");
+
+    await page.click('button[data-lang="en"]');
+    await page.waitForSelector('button[data-lang="en"][aria-pressed="true"]', { timeout: 5000 });
+    assert((await page.getAttribute("html", "lang")) === "en", "language switch updates html lang");
+    assert(await page.isVisible("text=Sign in"), "switching to English re-renders the login copy");
+    assert(
+      (await page.evaluate(() => localStorage.getItem("binusarcade.lang"))) === "en",
+      "language choice is persisted",
+    );
+
+    await page.reload();
+    await page.waitForSelector(".login-card", { timeout: 10_000 });
+    assert((await page.getAttribute("html", "lang")) === "en", "saved language survives reload");
+
+    await page.click('button[data-lang="id"]');
+    await page.waitForSelector("text=Masuk", { timeout: 5000 });
+    await context.close();
+  }
+
+  /* Indonesian signed-in shell */
+  {
+    const { context, page } = await newPage(browser, { lang: "id" });
+    await page.goto(base);
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
+    const navLabels = await page.evaluate(() =>
+      [...document.querySelectorAll(".bottom-nav a[data-nav]")].map((link) => link.textContent.trim()),
+    );
+    assert(
+      navLabels.join(",") === "Beranda,Pustaka,Skor,Saya",
+      `signed-in shell renders Indonesian navigation (${navLabels.join(",")})`,
+    );
+    await page.screenshot({ path: join(screenshots, "home-390-id.png"), fullPage: true });
     await context.close();
   }
 

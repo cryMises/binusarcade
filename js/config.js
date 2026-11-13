@@ -32,6 +32,7 @@ export const STORAGE = {
   session: "binusarcade.session",
   theme: "binusarcade.theme",
   device: "binusarcade.device",
+  lang: "binusarcade.lang",
 };
 
 export const FEATURES = {

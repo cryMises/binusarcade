@@ -3,7 +3,7 @@
  * core downloads are never put in this cache.
  */
 
-const VERSION = "binusarcade-v10";
+const VERSION = "binusarcade-v11";
 const SHELL = [
   "./",
   "./index.html",
@@ -13,6 +13,13 @@ const SHELL = [
   "./css/views.css",
   "./js/app.js",
   "./js/config.js",
+  "./js/i18n.js",
+  "./js/locales/id-core.js",
+  "./js/locales/id-home.js",
+  "./js/locales/id-library.js",
+  "./js/locales/id-detail.js",
+  "./js/locales/id-profile.js",
+  "./js/locales/id-register.js",
   "./js/api.js",
   "./js/auth.js",
   "./js/theme.js",

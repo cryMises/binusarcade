@@ -15,6 +15,7 @@ import {
   STORAGE,
   deviceId,
 } from "./config.js";
+import { t } from "./i18n.js";
 
 export class ApiError extends Error {
   constructor(message, { status = 0, detail = "", cause = null, retryable = false } = {}) {
@@ -167,23 +168,23 @@ async function parseError(response) {
 }
 
 function errorFor(status, detail) {
-  if (status === 401) return new ApiError("Not signed in or token expired.", { status, detail });
-  if (status === 403) return new ApiError("You don't have permission for that.", { status, detail });
-  if (status === 404) return new ApiError("Not found on the RomM server.", { status, detail });
-  if (status === 422) return new ApiError(detail || "RomM rejected the request.", { status, detail });
+  if (status === 401) return new ApiError(t("Not signed in or token expired."), { status, detail });
+  if (status === 403) return new ApiError(t("You don't have permission for that."), { status, detail });
+  if (status === 404) return new ApiError(t("Not found on the RomM server."), { status, detail });
+  if (status === 422) return new ApiError(detail || t("RomM rejected the request."), { status, detail });
   if (status >= 500) {
-    return new ApiError("The RomM server hit a snag. Try again in a moment.", {
+    return new ApiError(t("The RomM server hit a snag. Try again in a moment."), {
       status,
       detail,
       retryable: true,
     });
   }
-  return new ApiError(detail || `Request failed (${status}).`, { status, detail });
+  return new ApiError(detail || t("Request failed ({status}).", { status }), { status, detail });
 }
 
 function networkError(cause) {
   return new ApiError(
-    "Can't reach the arcade server. Check the RomM CORS setting and your connection.",
+    t("Can't reach the arcade server. Check the RomM CORS setting and your connection."),
     { status: 0, cause, retryable: true },
   );
 }
@@ -265,7 +266,7 @@ async function rawRequest(
     done();
     if (isAbortError(error) || error?.name === "TimeoutError") {
       if (signal?.aborted) throw error;
-      throw new ApiError("The arcade server took too long to answer.", {
+      throw new ApiError(t("The arcade server took too long to answer."), {
         status: 0,
         cause: error,
         retryable: true,
@@ -377,7 +378,7 @@ export async function refreshAccessToken() {
 
   refreshPromise = (async () => {
     const session = getSession();
-    if (!canRefresh(session)) throw new ApiError("Session expired.", { status: 401 });
+    if (!canRefresh(session)) throw new ApiError(t("Session expired."), { status: 401 });
 
     const body = new URLSearchParams({
       grant_type: "refresh_token",
@@ -406,14 +407,14 @@ export async function refreshAccessToken() {
 async function accessToken() {
   const session = getSession();
   if (!session?.tokens?.access_token) {
-    throw new ApiError("Sign in to open the arcade.", { status: 401 });
+    throw new ApiError(t("Sign in to open the arcade."), { status: 401 });
   }
   if (Date.now() < tokenExpiresAt(session) - 30_000) {
     return session.tokens.access_token;
   }
   if (canRefresh(session)) return refreshAccessToken();
   sessionExpired();
-  throw new ApiError("Session expired.", { status: 401 });
+  throw new ApiError(t("Session expired."), { status: 401 });
 }
 
 export async function fetchWithAuth(url, options = {}) {
@@ -463,7 +464,7 @@ export async function downloadBlob(url, { signal, onProgress } = {}) {
   } catch (error) {
     if (isAbortError(error) || error instanceof ApiError) throw error;
     throw new ApiError(
-      `Couldn't start the game download from ${hostOf(url)}. The browser blocked the file request (CORS) or the connection dropped.`,
+      t("Couldn't start the game download from {host}. The browser blocked the file request (CORS) or the connection dropped.", { host: hostOf(url) }),
       { status: 0, cause: error, retryable: true },
     );
   }
@@ -566,7 +567,7 @@ export function hasSignupRelay() {
 async function relayRequest(path, { method = "GET", body, auth = false, signal, timeout = 12_000 } = {}) {
   const base = String(SIGNUP_RELAY_URL || "").trim().replace(/\/+$/, "");
   if (!base) {
-    throw new ApiError("Signup relay is not configured.", { status: 0 });
+    throw new ApiError(t("Signup relay is not configured."), { status: 0 });
   }
   const headers = { Accept: "application/json" };
   let requestBody;
@@ -593,9 +594,9 @@ async function relayRequest(path, { method = "GET", body, auth = false, signal, 
     done();
     if (isAbortError(error) || error?.name === "TimeoutError") {
       if (signal?.aborted) throw error;
-      throw new ApiError("Signup relay timed out.", { status: 0, cause: error, retryable: true });
+      throw new ApiError(t("Signup relay timed out."), { status: 0, cause: error, retryable: true });
     }
-    throw new ApiError("Couldn't reach the signup relay.", { status: 0, cause: error, retryable: true });
+    throw new ApiError(t("Couldn't reach the signup relay."), { status: 0, cause: error, retryable: true });
   }
   done();
   if (!response.ok) {

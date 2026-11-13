@@ -85,6 +85,20 @@ npx wrangler deploy
 - Static checks: `npm test` (parses all JS modules + `sw.js` and runs unit checks).
 - Browser smoke: `npm run test:browser` (Playwright suite covering Home stats, dynamic showcase aspect/columns, filters, Detail, Login, Register, Admin Signup QR polling/expiry/cleanup, 360px/1280px layouts, and zero console/page errors).
 
+## Languages
+
+The UI ships in Indonesian (default) and English. `js/i18n.js` holds the
+runtime: `locale()` / `setLocale()` persist to `localStorage["binusarcade.lang"]`,
+set `<html lang>` plus `data-lang`, and broadcast a `binusarcade:lang` event
+that re-renders the current view. `t(source, params)` and `tn(count, one, many,
+params)` look up Indonesian strings by their exact English source text, so
+English is always the fallback and a missing key degrades to readable copy.
+
+Add a string by writing the English text where it renders and adding the
+Indonesian pair to the matching `js/locales/id-*.js` file
+(`core`, `home`, `library`, `detail`, `profile`, `register`). `npm test`
+rejects empty values, duplicate keys across files, and mismatched `{placeholders}`.
+
 ## Files
 
 ```
@@ -96,6 +110,8 @@ css/tokens.css        stock RomM light + dark theme tokens
 css/components.css    Material buttons, chips, inputs, cards, modals
 css/views.css         topbar, bottom nav, home stats, showcase grid, detail, profile, login/register, signup QR
 js/config.js          RomM origin, API base, public invite URL base, platform helpers
+js/i18n.js            language state, `t()` / `tn()`, `<html lang>` + `binusarcade:lang`
+js/locales/*.js       Indonesian dictionaries keyed by the exact English source string
 js/api.js             bearer session, token scope fallback, refresh, fetch wrapper, endpoints
 js/auth.js            login / restore / logout
 js/theme.js           theme persistence + prefers-color-scheme

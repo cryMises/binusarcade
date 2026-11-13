@@ -168,6 +168,45 @@ async function checkRelayDO() {
   }
 }
 
+const i18n = await import(pathToFileURL(join(root, "js/i18n.js")));
+
+const localeFiles = ["core", "home", "library", "detail", "profile", "register"];
+const localeModules = {};
+for (const name of localeFiles) {
+  localeModules[name] = (await import(pathToFileURL(join(root, "js/locales", `id-${name}.js`)))).default || {};
+}
+const mergedLocale = Object.assign({}, ...Object.values(localeModules));
+
+const duplicateKeys = [];
+const conflictingKeys = [];
+{
+  const seen = new Map();
+  for (const [file, dict] of Object.entries(localeModules)) {
+    for (const [key, value] of Object.entries(dict)) {
+      if (!seen.has(key)) {
+        seen.set(key, { file, value });
+        continue;
+      }
+      const first = seen.get(key);
+      duplicateKeys.push(key);
+      if (first.value !== value) conflictingKeys.push(`${key} (${first.file} vs ${file})`);
+    }
+  }
+}
+const emptyValues = Object.entries(mergedLocale).filter(
+  ([, value]) => typeof value !== "string" || !value.trim(),
+);
+const placeholderMismatch = Object.entries(mergedLocale).filter(([key, value]) => {
+  const source = (String(key).match(/\{(\w+)\}/g) || []).sort().join(",");
+  const target = (String(value).match(/\{(\w+)\}/g) || []).sort().join(",");
+  return source !== target;
+});
+
+for (const key of duplicateKeys) console.error(`duplicate locale key (same value, harmless): ${key}`);
+for (const key of conflictingKeys) console.error(`conflicting locale translation: ${key}`);
+for (const [key] of emptyValues) console.error(`empty locale value: ${key}`);
+for (const [key, value] of placeholderMismatch) console.error(`placeholder mismatch: ${key} -> ${value}`);
+
 const relayChecks = await checkRelayDO();
 
 const checks = [
@@ -184,6 +223,16 @@ const checks = [
   ["Invite link API method", typeof api.api.createInviteLink === "function"],
   ["Users API method", typeof api.api.users === "function"],
   ["Strict admin role check", api.isRoleAdmin({ user: { role: "admin" } }) && !api.isRoleAdmin({ user: { role: "user" }, permissions: { is_admin: true } })],
+  ["i18n defaults to Indonesian", i18n.DEFAULT_LOCALE === "id" && i18n.locale() === "id"],
+  ["i18n translates known strings", i18n.t("Home") === "Beranda" && i18n.t("Sign in") === "Masuk"],
+  ["i18n falls back to the English source", i18n.t("Not a real key zzz") === "Not a real key zzz"],
+  ["i18n interpolates params", i18n.t("Hi {name}, {n} left", { name: "Ada", n: 3 }) === "Hi Ada, 3 left"],
+  ["i18n plurals pick the right form", i18n.tn(1, "1 save", "{n} saves", { n: 1 }) !== i18n.tn(2, "1 save", "{n} saves", { n: 2 })],
+  ["i18n dictionaries have no empty values", emptyValues.length === 0],
+  ["i18n dictionaries have no conflicting translations", conflictingKeys.length === 0],
+  ["i18n dictionaries keep placeholders", placeholderMismatch.length === 0],
+  ["i18n covers every view area", localeFiles.every((name) => Object.keys(localeModules[name]).length > 0)],
+
   ["Relay DO defaults disabled", relayChecks.disabledDefault],
   ["Relay DO blocks non-admin toggle", relayChecks.nonAdminBlocked],
   ["Relay DO mints claim without leaking token", relayChecks.enabledMintsClaim],

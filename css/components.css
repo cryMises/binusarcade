@@ -290,12 +290,13 @@ h3 {
 
 .btn-yellow {
   background: var(--secondary-lighten);
-  color: var(--secondary-darken);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 [data-theme="dark"] .btn-yellow {
-  background: rgba(139, 116, 232, 0.18);
-  color: var(--primary-lighten);
+  background: rgba(139, 116, 232, 0.22);
+  color: #d9d0ff;
 }
 
 .btn-pink,
@@ -545,6 +546,44 @@ select.input {
     center / 22px 22px no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm2 3v5h6V6H9Zm0 8v3h6v-3H9Z'/%3E%3C/svg%3E")
     center / 22px 22px no-repeat;
+}
+
+/* ---------- Language switch ---------- */
+
+.lang-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+
+.lang-option {
+  display: inline-grid;
+  min-width: 42px;
+  min-height: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--on-surface-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  place-items: center;
+  transition: background-color 140ms var(--ease), color 140ms var(--ease);
+}
+
+.lang-option:hover {
+  background: var(--hover);
+  color: var(--on-surface);
+}
+
+.lang-option[aria-pressed="true"],
+.lang-option[aria-pressed="true"]:hover {
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 /* ---------- Reduced motion ---------- */

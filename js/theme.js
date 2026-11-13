@@ -1,4 +1,5 @@
 import { STORAGE } from "./config.js";
+import { t } from "./i18n.js";
 
 const media = () => window.matchMedia?.("(prefers-color-scheme: dark)");
 let bound = false;
@@ -31,7 +32,7 @@ export function applyTheme(theme) {
   document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
     const dark = next === "dark";
     button.setAttribute("aria-pressed", String(dark));
-    button.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+    button.setAttribute("aria-label", t(dark ? "Switch to light mode" : "Switch to dark mode"));
     button.title = button.getAttribute("aria-label");
     const sun = button.querySelector("[data-icon-sun]");
     const moon = button.querySelector("[data-icon-moon]");

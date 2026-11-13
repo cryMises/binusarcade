@@ -45,6 +45,8 @@
 
   --font: "Segoe UI", system-ui, -apple-system, "Inter", Roboto, "Helvetica Neue",
     Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas,
+    monospace;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   --focus: #7850e6;
