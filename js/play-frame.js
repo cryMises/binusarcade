@@ -286,10 +286,10 @@ function handleMessage(event) {
   }
 }
 
-/* Chromium emits this when a ResizeObserver triggers another layout change.
- * EJS does it constantly; it is noise, not a failed game. */
+/* Chromium emits ResizeObserver warnings when EJS relayouts, and Wake Lock
+ * can be denied on phones. Both are noise, not a failed game. */
 function isBenign(message) {
-  return /ResizeObserver loop (limit exceeded|completed with undelivered notifications)/i.test(
+  return /ResizeObserver loop (limit exceeded|completed with undelivered notifications)|Wake Lock permission request denied/i.test(
     String(message || ""),
   );
 }

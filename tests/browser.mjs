@@ -363,12 +363,17 @@ try {
           message: "ResizeObserver loop completed with undelivered notifications.",
         }),
       );
+      window.dispatchEvent(
+        new ErrorEvent("error", { message: "Wake Lock permission request denied" }),
+      );
       window.dispatchEvent(new ErrorEvent("error", { message: "A real emulator failure" }));
     });
     const messages = await page.evaluate(() => window.__messages);
     assert(
-      !messages.some((message) => String(message?.message || "").includes("ResizeObserver")),
-      "ResizeObserver noise is ignored",
+      !messages.some((message) =>
+        /ResizeObserver|Wake Lock/.test(String(message?.message || "")),
+      ),
+      "ResizeObserver and Wake Lock noise is ignored",
     );
     assert(
       messages.some((message) => String(message?.message || "").includes("A real emulator failure")),
