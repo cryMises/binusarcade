@@ -28,30 +28,30 @@ export default {
   "Signup QR panel": "Panel QR Pendaftaran",
   "Checking status…": "Memeriksa status…",
   "Off by default · Single-use player invite":
-    "Mati secara bawaan · Undangan pemain sekali pakai",
-  "Off · Create account asks for admin code": "Mati · Buat akun meminta kode admin",
+    "Mati secara default · Undangan pemain sekali pakai",
+  "Off · Create account asks for admin code": "Mati · Buat akun minta kode admin",
   "Enabled · Anyone on Create account sees QR": "Aktif · Siapa pun di Buat akun melihat QR",
-  "Relay unreachable · Try toggling again": "Relay tidak terjangkau · Coba alihkan lagi",
+  "Relay unreachable · Try toggling again": "Relay tidak terjangkau · Coba toggle lagi",
   "Couldn't disable shared signup QR.": "Gagal mematikan QR pendaftaran bersama.",
 
   /* Personal shelf */
   "Personal shelf": "Rak pribadi",
   "Favorites, collections, ratings and the backlog are a v2 feature. Until then, the same account can manage them in stock RomM.":
-    "Favorit, koleksi, rating, dan daftar tunggu baru ada di v2. Sementara itu, akun yang sama bisa mengaturnya di RomM asli.",
+    "Favorit, koleksi, rating, dan backlog baru ada di v2. Sementara itu, akun yang sama bisa mengaturnya di RomM asli.",
   "Open stock RomM": "Buka RomM asli",
 
   /* Scores */
   "Coming in v3": "Hadir di v3",
   "High scores": "Papan skor",
   "Leaderboards and player stats are coming in a later update. Your playtime is already tracked in RomM.":
-    "Papan peringkat dan statistik pemain menyusul di pembaruan berikutnya. Waktu bermainmu sudah tercatat di RomM.",
-  "Browse the library": "Jelajahi pustaka",
+    "Leaderboard dan statistik pemain menyusul di update berikutnya. Waktu main kamu sudah tercatat di RomM.",
+  "Browse the library": "Jelajahi library",
   "Back to Home": "Kembali ke Beranda",
 
   /* Admin */
   "This area is for admins.": "Area ini khusus admin.",
   "The v1 app deliberately doesn't clone RomM's admin screens. Server administration stays in stock RomM, where permissions are enforced.":
-    "Aplikasi v1 sengaja tidak meniru layar admin RomM. Administrasi server tetap di RomM asli, tempat izinnya benar-benar dijaga.",
+    "Aplikasi v1 sengaja tidak meniru layar admin RomM. Administrasi server tetap di RomM asli, tempat izinnya dijaga.",
   "Open RomM admin": "Buka admin RomM",
   "Back to Me": "Kembali ke Saya",
   "Members only": "Khusus anggota",

@@ -940,7 +940,7 @@ try {
       [...document.querySelectorAll(".bottom-nav a[data-nav]")].map((link) => link.textContent.trim()),
     );
     assert(
-      navLabels.join(",") === "Beranda,Pustaka,Skor,Saya",
+      navLabels.join(",") === "Beranda,Library,Skor,Saya",
       `signed-in shell renders Indonesian navigation (${navLabels.join(",")})`,
     );
     await page.screenshot({ path: join(screenshots, "home-390-id.png"), fullPage: true });

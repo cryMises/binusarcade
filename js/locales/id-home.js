@@ -2,34 +2,34 @@
 
 export default {
   /* Hero + search */
-  "Library overview": "Ringkasan pustaka",
+  "Library overview": "Ringkasan library",
   "A stats-only look at the collection. Pick a game from the Library.":
-    "Lihat koleksi lewat statistik. Pilih gim dari Pustaka.",
-  "Search the library…": "Cari di pustaka…",
-  "Search games": "Cari gim",
+    "Lihat koleksi lewat statistik. Pilih game dari Library.",
+  "Search the library…": "Cari di library…",
+  "Search games": "Cari game",
   Search: "Cari",
 
   /* Section titles + links */
-  "Library stats": "Statistik pustaka",
+  "Library stats": "Statistik library",
   Systems: "Sistem",
-  "Your saves": "Simpanan kamu",
+  "Your saves": "Save kamu",
   "Recent activity": "Aktivitas terbaru",
   "Recently added": "Baru ditambahkan",
   Browse: "Jelajahi",
-  "All games": "Semua gim",
+  "All games": "Semua game",
 
   /* Stat cards */
-  Games: "Gim",
+  Games: "Game",
   Platforms: "Platform",
-  "in the library": "di pustaka",
+  "in the library": "di library",
   systems: "sistem",
-  Saves: "Simpanan",
-  "save files": "berkas simpanan",
+  Saves: "Save",
+  "save files": "file save",
   "Save states": "Save state",
-  "state files": "berkas state",
-  Screenshots: "Tangkapan layar",
+  "state files": "file state",
+  Screenshots: "Screenshot",
   captures: "tangkapan",
-  "Library size": "Ukuran pustaka",
+  "Library size": "Ukuran library",
   "on disk": "di disk",
 
   /* Stats extras */
@@ -38,28 +38,28 @@ export default {
   Unknown: "Tidak diketahui",
 
   /* Empty states */
-  "No library stats yet": "Belum ada statistik pustaka",
+  "No library stats yet": "Belum ada statistik library",
   "RomM returned an empty stats response.": "RomM mengembalikan respons statistik kosong.",
   "No systems yet": "Belum ada sistem",
-  "RomM returned no platforms with games.": "RomM tidak mengembalikan platform yang punya gim.",
+  "RomM returned no platforms with games.": "RomM tidak mengembalikan platform yang punya game.",
   "No activity yet": "Belum ada aktivitas",
-  "When someone starts a game, it shows up here.": "Saat seseorang mulai bermain, aktivitasnya muncul di sini.",
-  "No saves yet": "Belum ada simpanan",
-  "Saves synced from the emulator will appear here.": "Simpanan yang tersinkron dari emulator muncul di sini.",
-  "No games yet": "Belum ada gim",
-  "When RomM scans a game, it will show up here.": "Saat RomM memindai gim, gim itu muncul di sini.",
-  "Open library": "Buka pustaka",
+  "When someone starts a game, it shows up here.": "Saat seseorang mulai main, aktivitasnya muncul di sini.",
+  "No saves yet": "Belum ada save",
+  "Saves synced from the emulator will appear here.": "Save yang tersinkron dari emulator muncul di sini.",
+  "No games yet": "Belum ada game",
+  "When RomM scans a game, it will show up here.": "Saat RomM memindai game, game itu muncul di sini.",
+  "Open library": "Buka library",
 
   /* Activity lines */
   "Someone": "Seseorang",
-  "a game": "sebuah gim",
-  "{who} started {game}": "{who} mulai memainkan {game}",
-  "{who} started {game} on {platform}": "{who} mulai memainkan {game} di {platform}",
-  "{name}: {n} games": "{name}: {n} gim",
+  "a game": "sebuah game",
+  "{who} started {game}": "{who} mulai main {game}",
+  "{who} started {game} on {platform}": "{who} mulai main {game} di {platform}",
+  "{name}: {n} games": "{name}: {n} game",
 
   /* Saves summary */
   Default: "Bawaan",
-  " save across ": " simpanan di ",
-  " saves across ": " simpanan di ",
+  " save across ": " save di ",
+  " saves across ": " save di ",
   " slots": " slot",
 };

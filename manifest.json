@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Binus Arcade",
   "short_name": "Binus Arcade",
-  "description": "Tampilan ramah ponsel untuk pustaka gim RomM pribadi.",
+  "description": "Tampilan ramah ponsel untuk library game RomM pribadi.",
   "lang": "id",
   "start_url": "./",
   "scope": "./",

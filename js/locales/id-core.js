@@ -8,7 +8,7 @@ export default {
 
   /* Navigation and chrome */
   Home: "Beranda",
-  Library: "Pustaka",
+  Library: "Library",
   Scores: "Skor",
   Me: "Saya",
   Account: "Akun",
@@ -17,15 +17,15 @@ export default {
   "Signup QR": "QR Pendaftaran",
   Main: "Utama",
   Bottom: "Bawah",
-  "Search the library": "Cari di pustaka",
+  "Search the library": "Cari di library",
   "Account for {name}": "Akun {name}",
   "Switch to dark mode": "Ganti ke mode gelap",
   "Switch to light mode": "Ganti ke mode terang",
   "Offline · cached shell only. Reconnect to load your library.":
-    "Offline · hanya tampilan tersimpan. Sambungkan internet untuk memuat pustaka.",
+    "Offline · cuma tampilan tersimpan. Sambungkan internet buat muat library.",
 
   /* Boot + login */
-  "Connecting to your library…": "Menghubungkan ke pustaka…",
+  "Connecting to your library…": "Menghubungkan ke library…",
   "Checking your session…": "Memeriksa sesi…",
   "The RomM server didn't answer. Try signing in again.":
     "Server RomM tidak merespons. Coba masuk lagi.",
@@ -33,22 +33,22 @@ export default {
     "Gagal memperbarui sesi. Data tersimpan mungkin sudah lama.",
   "Your session expired. Sign in again.": "Sesi kamu berakhir. Silakan masuk lagi.",
   "Signed out.": "Kamu sudah keluar.",
-  "Self-hosted game library": "Pustaka gim pribadi",
+  "Self-hosted game library": "Library game pribadi",
   "Your RomM library, tuned for a phone. Stats, shelves, and saves — no clutter.":
-    "Pustaka RomM kamu, dirapikan untuk layar ponsel. Statistik, rak gim, dan simpanan.",
+    "Library RomM kamu, dirapikan buat layar ponsel. Statistik, rak game, dan save.",
   "RomM account": "Akun RomM",
   "Sign in": "Masuk",
   "Sign in with your RomM account. Your password never touches storage.":
-    "Masuk dengan akun RomM kamu. Kata sandi tidak pernah disimpan.",
+    "Masuk dengan akun RomM kamu. Password tidak pernah disimpan.",
   "RomM username": "Nama pengguna RomM",
-  Password: "Kata sandi",
+  Password: "Password",
   "Stay signed in on this device": "Tetap masuk di perangkat ini",
-  "Best on your own phone or laptop.": "Cocok untuk ponsel atau laptop pribadi.",
+  "Best on your own phone or laptop.": "Cocok buat ponsel atau laptop pribadi.",
   "Fill in both fields.": "Isi kedua kolom.",
   "Signing in…": "Sedang masuk…",
   "Can't reach the RomM server. Ask the server owner to allow this origin in ROMM_CORS_ALLOWED_ORIGINS, then try again.":
-    "Tidak bisa menghubungi server RomM. Minta pemilik server mengizinkan origin ini di ROMM_CORS_ALLOWED_ORIGINS, lalu coba lagi.",
-  "That username and password didn't match.": "Nama pengguna dan kata sandi tidak cocok.",
+    "Tidak bisa menghubungi server RomM. Minta admin server mengizinkan origin ini di ROMM_CORS_ALLOWED_ORIGINS, lalu coba lagi.",
+  "That username and password didn't match.": "Nama pengguna dan password tidak cocok.",
   "Couldn't sign in. Try again.": "Gagal masuk. Coba lagi.",
   "Have an invite? ": "Punya kode undangan? ",
   "Create account": "Buat akun",
@@ -70,14 +70,14 @@ export default {
   "Can't reach the RomM server. Check your connection and the CORS setting.":
     "Tidak bisa menghubungi server RomM. Periksa koneksi dan pengaturan CORS.",
   "Untitled cartridge": "Kartrid tanpa judul",
-  "No cover for {name}": "Belum ada sampul untuk {name}",
-  "this game": "gim ini",
-  "Cover art for {name}": "Sampul {name}",
-  game: "gim",
-  Game: "Gim",
+  "No cover for {name}": "Belum ada cover untuk {name}",
+  "this game": "game ini",
+  "Cover art for {name}": "Cover {name}",
+  game: "game",
+  Game: "Game",
   Dialog: "Dialog",
   Close: "Tutup",
-  Screenshot: "Tangkapan layar",
+  Screenshot: "Screenshot",
   "Something went wrong": "Terjadi kesalahan",
   Retry: "Coba lagi",
   "Loading…": "Memuat…",
@@ -100,7 +100,7 @@ export default {
 
   /* Cards, lists, states */
   Open: "Buka",
-  games: "gim",
+  games: "game",
   "See all": "Lihat semua",
   "Nothing here yet": "Belum ada apa-apa di sini",
   "No matching items were found.": "Tidak ada yang cocok.",
@@ -108,7 +108,7 @@ export default {
   "Try again": "Coba lagi",
   "Couldn't load this section": "Bagian ini gagal dimuat",
   "Close dialog": "Tutup dialog",
-  "Game screenshot": "Tangkapan layar gim",
+  "Game screenshot": "Screenshot game",
 
   /* API + network errors */
   "Not signed in or token expired.": "Belum masuk atau sesi sudah berakhir.",
@@ -119,14 +119,14 @@ export default {
     "Server RomM bermasalah. Coba lagi sebentar lagi.",
   "Request failed ({status}).": "Permintaan gagal ({status}).",
   "Can't reach the arcade server. Check the RomM CORS setting and your connection.":
-    "Tidak bisa menghubungi server arkade. Periksa pengaturan CORS RomM dan koneksimu.",
-  "The arcade server took too long to answer.": "Server arkade terlalu lama menjawab.",
+    "Tidak bisa menghubungi server arcade. Periksa pengaturan CORS RomM dan koneksimu.",
+  "The arcade server took too long to answer.": "Server arcade terlalu lama menjawab.",
   "Session expired.": "Sesi berakhir.",
-  "Sign in to open the arcade.": "Masuk untuk membuka arkade.",
+  "Sign in to open the arcade.": "Masuk untuk membuka arcade.",
   "Signup relay is not configured.": "Relay pendaftaran belum diatur.",
   "Signup relay timed out.": "Relay pendaftaran kehabisan waktu.",
   "Couldn't reach the signup relay.": "Tidak bisa menghubungi relay pendaftaran.",
   "Couldn't start the game download from {host}. The browser blocked the file request (CORS) or the connection dropped.":
-    "Gagal memulai unduhan gim dari {host}. Peramban memblokir permintaan berkas (CORS) atau koneksi terputus.",
+    "Gagal memulai unduhan game dari {host}. Browser memblokir permintaan file (CORS) atau koneksi terputus.",
   Player: "Pemain",
 };
