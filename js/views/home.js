@@ -1,93 +1,225 @@
 import { api } from "../api.js";
 import {
   clear,
-  continueTicket,
   el,
-  emptyContinue,
+  emptyState,
   errorState,
+  formatBytes,
   gameCard,
-  loadingLine,
-  moreLink,
-  openModal,
-  platformCart,
+  icon,
   sectionHead,
   skeletonGrid,
-  skeletonTicket,
-  sumSessionMs,
-  toast,
+  timeAgo,
 } from "../components.js";
-import { platformLabelOf, RAIL_SIZE } from "../config.js";
+import { RAIL_SIZE } from "../config.js";
 
-function recentParams() {
-  return {
-    limit: RAIL_SIZE,
-    order_by: "created_at",
-    order_dir: "desc",
-    with_total: false,
-  };
+function labelize(value) {
+  return String(value || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-async function loadContinue() {
-  let result;
-  try {
-    result = await api.roms(
-      { limit: 1, last_played: true, order_by: "last_played", order_dir: "desc" },
-      { cacheKey: "home:continue" },
+function statCard(label, value, note, { href, iconName } = {}) {
+  const body = [
+    iconName ? el("span", { class: "stat-icon", "aria-hidden": "true" }, icon(iconName, 20)) : null,
+    el("span", { class: "stat-value" }, value),
+    el("span", { class: "stat-label" }, label),
+    note ? el("span", { class: "stat-note" }, note) : null,
+  ];
+  return href
+    ? el("a", { class: "stat-card", href }, ...body)
+    : el("div", { class: "stat-card" }, ...body);
+}
+
+function barRow(label, count, total) {
+  const safeTotal = Math.max(Number(total) || 0, Number(count) || 0, 1);
+  const percent = Math.max(0, Math.min(100, (Number(count) / safeTotal) * 100));
+  return el(
+    "div",
+    { class: "bar-row" },
+    el("span", { class: "bar-label" }, label || "Unknown"),
+    el("span", { class: "bar-count" }, String(count ?? 0)),
+    el(
+      "span",
+      { class: "bar-track", "aria-hidden": "true" },
+      el("span", { class: "bar-fill", style: { width: `${percent}%` } }),
+    ),
+  );
+}
+
+function statsPanel(stats) {
+  if (!stats) return emptyState({ title: "No library stats yet", note: "RomM returned an empty stats response." });
+  const cards = el(
+    "div",
+    { class: "stat-grid" },
+    statCard("Games", Number(stats.ROMS) || 0, "in the library", { href: "#/library", iconName: "grid" }),
+    statCard("Platforms", Number(stats.PLATFORMS) || 0, "systems", { href: "#/library", iconName: "book" }),
+    statCard("Saves", Number(stats.SAVES) || 0, "save files", { iconName: "save" }),
+    statCard("Save states", Number(stats.STATES) || 0, "state files", { iconName: "refresh" }),
+    statCard("Screenshots", Number(stats.SCREENSHOTS) || 0, "captures", { iconName: "camera" }),
+    statCard("Library size", formatBytes(stats.TOTAL_FILESIZE_BYTES), "on disk", { iconName: "download" }),
+  );
+
+  const coverageEntries = Object.entries(stats.METADATA_COVERAGE || {}).filter(
+    ([, items]) => Array.isArray(items) && items.length,
+  );
+  const regionEntries = Object.entries(stats.REGION_BREAKDOWN || {}).filter(
+    ([, items]) => Array.isArray(items) && items.length,
+  );
+  if (!coverageEntries.length && !regionEntries.length) return cards;
+
+  const extras = el("div", { class: "stats-extras" });
+  if (coverageEntries.length) {
+    const groups = coverageEntries.map(([key, items]) => {
+      const max = items.reduce((highest, item) => Math.max(highest, Number(item.matched) || 0), 0);
+      return el(
+        "div",
+        { class: "coverage-group" },
+        el("h3", { class: "coverage-title" }, labelize(key)),
+        ...items.map((item) => barRow(item.source, item.matched, max)),
+      );
+    });
+    extras.append(el("div", { class: "coverage-card" }, el("h2", {}, "Metadata coverage"), ...groups));
+  }
+  if (regionEntries.length) {
+    const groups = regionEntries.map(([key, items]) => {
+      const max = items.reduce((highest, item) => Math.max(highest, Number(item.count) || 0), 0);
+      return el(
+        "div",
+        { class: "coverage-group" },
+        el("h3", { class: "coverage-title" }, labelize(key)),
+        ...items.map((item) => barRow(labelize(item.region), item.count, max)),
+      );
+    });
+    extras.append(el("div", { class: "coverage-card" }, el("h2", {}, "Regions"), ...groups));
+  }
+  return el("div", {}, cards, extras);
+}
+
+function systemsPanel(platforms) {
+  const withGames = (platforms || [])
+    .filter((platform) => Number(platform.rom_count) > 0)
+    .sort(
+      (a, b) =>
+        (Number(b.rom_count) || 0) - (Number(a.rom_count) || 0) ||
+        String(a.name).localeCompare(String(b.name)),
     );
-  } catch {
-    try {
-      result = await api.roms({ limit: 1, last_played: true }, { cacheKey: "home:continue:plain" });
-    } catch {
-      return null;
-    }
+  if (!withGames.length) {
+    return emptyState({ title: "No systems yet", note: "RomM returned no platforms with games." });
   }
 
-  const rom = result?.items?.[0];
-  if (!rom) return null;
-
-  let sessions = [];
-  try {
-    sessions = await api.playSessions({ rom_id: rom.id, limit: 50 });
-  } catch {
-    /* playtime is a nicety; the ticket still works without it */
-  }
-
-  return {
-    rom,
-    playtime: sumSessionMs(sessions),
-    sessions: Array.isArray(sessions) ? sessions.length : 0,
-  };
+  const max = withGames.reduce((highest, platform) => Math.max(highest, Number(platform.rom_count) || 0), 0);
+  const list = el("div", { class: "system-list" });
+  withGames.forEach((platform) => {
+    const slug = platform.slug || platform.fs_slug || platform.id;
+    const count = Number(platform.rom_count) || 0;
+    const percent = Math.max(0, Math.min(100, (count / Math.max(max, 1)) * 100));
+    list.append(
+      el(
+        "a",
+        {
+          class: "system-row",
+          href: `#/platform/${encodeURIComponent(slug)}`,
+          "aria-label": `${platform.display_name || platform.name}: ${count} games`,
+        },
+        el("span", { class: "system-abbr", "aria-hidden": "true" }, platform.abbreviation || "?"),
+        el(
+          "span",
+          { class: "system-body" },
+          el("span", { class: "system-name" }, platform.display_name || platform.name),
+          el(
+            "span",
+            { class: "system-track", "aria-hidden": "true" },
+            el("span", { class: "system-fill", style: { width: `${percent}%` } }),
+          ),
+        ),
+        el("span", { class: "system-count" }, String(count)),
+      ),
+    );
+  });
+  return list;
 }
 
-async function loadRecent() {
-  try {
-    return await api.roms(recentParams(), { cacheKey: "home:recent" });
-  } catch {
-    try {
-      return await api.roms({ limit: RAIL_SIZE }, { cacheKey: "home:recent:plain" });
-    } catch {
-      return null;
-    }
+function activityPanel(entries) {
+  if (!Array.isArray(entries) || !entries.length) {
+    return emptyState({ title: "No activity yet", note: "When someone starts a game, it shows up here." });
   }
+  const list = el("ul", { class: "activity-list" });
+  entries.slice(0, 8).forEach((entry) => {
+    const who = entry.username || "Someone";
+    const game = entry.rom_name || "a game";
+    const platform = entry.platform_name ? ` on ${entry.platform_name}` : "";
+    list.append(
+      el(
+        "li",
+        { class: "activity-row" },
+        el("span", { class: "activity-dot", "aria-hidden": "true" }),
+        el("span", { class: "activity-text" }, `${who} started ${game}${platform}`),
+        el("span", { class: "activity-time" }, timeAgo(entry.started_at)),
+      ),
+    );
+  });
+  return list;
+}
+
+function savesPanel(saves) {
+  const items = Array.isArray(saves) ? saves : [];
+  if (!items.length) {
+    return emptyState({ title: "No saves yet", note: "Saves synced from the emulator will appear here." });
+  }
+  const slots = new Map();
+  items.forEach((save) => {
+    const key = save.slot || "Default";
+    slots.set(key, (slots.get(key) || 0) + 1);
+  });
+  const rows = [...slots.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([slot, count]) => barRow(slot, count, items.length));
+  return el(
+    "div",
+    { class: "save-summary" },
+    el(
+      "div",
+      { class: "save-total" },
+      el("span", { class: "save-total-value" }, String(items.length)),
+      el("span", { class: "save-total-label" }, items.length === 1 ? " save across " : " saves across "),
+      el("span", { class: "save-total-value" }, String(slots.size)),
+      el("span", { class: "save-total-label" }, slots.size === 1 ? " slot" : " slots"),
+    ),
+    ...rows,
+  );
+}
+
+function recentPanel(result) {
+  const items = result?.items || [];
+  if (!items.length) {
+    return emptyState({
+      title: "No games yet",
+      note: "When RomM scans a game, it will show up here.",
+      action: el("a", { class: "btn", href: "#/library" }, "Open library"),
+    });
+  }
+  const grid = el("div", { class: "game-grid" });
+  items.forEach((rom, index) => grid.append(gameCard(rom, index)));
+  return grid;
 }
 
 export function homeView(ctx) {
   const root = el("div", { class: "view wrap home-view" });
-
-  const eyebrow = el("div", { class: "eyebrow" }, "Your library · warming up the tubes");
   const searchInput = el("input", {
+    class: "input",
     type: "search",
     name: "q",
-    placeholder: "Search the arcade…",
+    placeholder: "Search the library…",
     autocomplete: "off",
     "aria-label": "Search games",
     enterkeyhint: "search",
   });
-
   const search = el(
     "form",
     {
-      class: "search-groove deck-groove",
+      class: "home-search",
       role: "search",
       on: {
         submit: (event) => {
@@ -97,171 +229,95 @@ export function homeView(ctx) {
         },
       },
     },
-    el("span", { class: "search-icon", "aria-hidden": "true" }, "⌕"),
+    el("span", { class: "search-icon", "aria-hidden": "true" }, icon("search", 20)),
     searchInput,
-    el("button", { class: "btn btn-keycap btn-mint", type: "submit" }, "Search"),
+    el("button", { class: "btn btn-primary", type: "submit" }, "Search"),
   );
-
-  const tapes = el("div", { class: "hero-tapes" });
-  tapes.append(el("span", { class: "washi-tape yellow" }, "WASHi tape inside"));
 
   const hero = el(
     "header",
-    { class: "hero" },
-    eyebrow,
-    el(
-      "h1",
-      { class: "hero-title" },
-      el("span", { class: "marker-line" }, "Binus Arcade"),
-    ),
-    tapes,
+    { class: "home-hero" },
+    el("p", { class: "eyebrow" }, "Library overview"),
+    el("h1", { class: "home-title" }, "Binus Arcade"),
+    el("p", { class: "note" }, "A stats-only look at the collection. Pick a game from the Library."),
     search,
-    el("div", { class: "hero-doodle", "aria-hidden": "true" }),
   );
 
-  const continueSection = el("section", { class: "section", "aria-labelledby": "continue-title" });
-  const continueHead = el(
-    "div",
-    { class: "section-head" },
-    el("h2", { id: "continue-title", class: "marker marker-sm" }, "Continue playing"),
-  );
-  continueSection.append(continueHead, skeletonTicket());
+  const statsSection = el("section", { class: "section", "aria-labelledby": "home-stats-title" });
+  const systemsSection = el("section", { class: "section", "aria-labelledby": "home-systems-title" });
+  const savesSection = el("section", { class: "section", "aria-labelledby": "home-saves-title" });
+  const activitySection = el("section", { class: "section", "aria-labelledby": "home-activity-title" });
+  const recentSection = el("section", { class: "section", "aria-labelledby": "home-recent-title" });
 
-  const systemsSection = el("section", { class: "section", "aria-labelledby": "systems-title" });
-  systemsSection.append(
-    el(
-      "div",
-      { class: "section-head" },
-      el("h2", { id: "systems-title", class: "marker marker-sm" }, "Systems shelf"),
-    ),
-    el("div", { class: "shelf", "aria-label": "Systems" }, skeletonGrid(3)),
-  );
+  function fillLoading() {
+    clear(statsSection);
+    statsSection.append(
+      el("h2", { class: "section-title", id: "home-stats-title" }, "Library stats"),
+      el("div", { class: "stat-grid" }, ...Array.from({ length: 6 }, () => el("div", { class: "skeleton skeleton-stat" }))),
+    );
+    clear(systemsSection);
+    systemsSection.append(
+      sectionHead("Systems", el("a", { class: "section-link", href: "#/library" }, "Browse")),
+      el("div", { class: "system-list" }, ...Array.from({ length: 4 }, () => el("div", { class: "skeleton skeleton-row" }))),
+    );
+    clear(savesSection);
+    savesSection.append(sectionHead("Your saves"), el("div", { class: "skeleton skeleton-block" }));
+    clear(activitySection);
+    activitySection.append(sectionHead("Recent activity"), el("div", { class: "skeleton skeleton-block" }));
+    clear(recentSection);
+    recentSection.append(sectionHead("Recently added", el("a", { class: "section-link", href: "#/library" }, "All games")), skeletonGrid(6));
+  }
 
-  const recentSection = el("section", { class: "section", "aria-labelledby": "recent-title" });
-  recentSection.append(
-    el(
-      "div",
-      { class: "section-head" },
-      el("h2", { id: "recent-title", class: "marker marker-sm" }, "Recently added"),
-      moreLink("#/library", "All games"),
-    ),
-    skeletonGrid(12),
-  );
+  function fillResults(results) {
+    const [statsResult, platformsResult, savesResult, activityResult, recentResult] = results;
 
-  root.append(hero, continueSection, systemsSection, recentSection);
-
-  (async () => {
-    const [platformsResult, recentResult, continueResult] = await Promise.allSettled([
-      api.platforms(),
-      loadRecent(),
-      loadContinue(),
-    ]);
-
-    const platforms =
-      platformsResult.status === "fulfilled" && Array.isArray(platformsResult.value)
-        ? platformsResult.value.filter((platform) => Number(platform.rom_count) > 0)
-        : [];
-
-    const total = platforms.reduce((sum, platform) => sum + (Number(platform.rom_count) || 0), 0);
-    eyebrow.textContent = total
-      ? `Your library · ${total} games`
-      : "Your library · find your next tape";
-
-    clear(tapes);
-    if (platforms.length) {
-      tapes.append(
-        el("span", { class: "washi-tape" }, `${platforms.length} systems`),
-        el("span", { class: "washi-tape mint" }, `${total} games`),
-        el("span", { class: "washi-tape blue" }, "Browser + phone"),
-      );
-    } else {
-      tapes.append(el("span", { class: "washi-tape" }, "Browser + phone"));
-    }
-
-    if (continueResult.status === "fulfilled" && continueResult.value) {
-      const { rom, playtime, sessions } = continueResult.value;
-      clear(continueSection);
-      continueSection.append(continueHead, continueTicket(rom, { playtime, sessions }));
-    } else {
-      clear(continueSection);
-      continueSection.append(continueHead, emptyContinue());
-    }
+    clear(statsSection);
+    statsSection.append(el("h2", { class: "section-title", id: "home-stats-title" }, "Library stats"));
+    if (statsResult.status === "fulfilled") statsSection.append(statsPanel(statsResult.value));
+    else statsSection.append(errorState(statsResult.reason, load));
 
     clear(systemsSection);
     systemsSection.append(
-      el(
-        "div",
-        { class: "section-head" },
-        el("h2", { class: "marker marker-sm" }, "Systems shelf"),
-        moreLink("#/library", "Browse"),
-      ),
+      sectionHead("Systems", el("a", { class: "section-link", href: "#/library" }, "Browse")),
     );
+    if (platformsResult.status === "fulfilled") systemsSection.append(systemsPanel(platformsResult.value));
+    else systemsSection.append(errorState(platformsResult.reason, load));
 
-    if (platforms.length) {
-      const shelf = el("div", { class: "shelf", "aria-label": "Systems" });
-      platforms
-        .slice()
-        .sort((a, b) => (b.rom_count || 0) - (a.rom_count || 0) || String(a.name).localeCompare(String(b.name)))
-        .forEach((platform) => shelf.append(platformCart(platform)));
-      systemsSection.append(shelf);
-    } else if (platformsResult.status === "rejected") {
-      systemsSection.append(
-        errorState(platformsResult.reason, () => {
-          toast("Refreshing the shelf…");
-          location.reload();
-        }),
-      );
-    } else {
-      systemsSection.append(
-        emptyStateFor("No systems on the shelf", "RomM returned no platforms with games yet."),
-      );
-    }
+    clear(savesSection);
+    savesSection.append(sectionHead("Your saves"));
+    if (savesResult.status === "fulfilled") savesSection.append(savesPanel(savesResult.value));
+    else savesSection.append(errorState(savesResult.reason, load));
+
+    clear(activitySection);
+    activitySection.append(sectionHead("Recent activity"));
+    if (activityResult.status === "fulfilled") activitySection.append(activityPanel(activityResult.value));
+    else activitySection.append(errorState(activityResult.reason, load));
 
     clear(recentSection);
     recentSection.append(
-      el(
-        "div",
-        { class: "section-head" },
-        el("h2", { class: "marker marker-sm" }, "Recently added"),
-        moreLink("#/library", "All games"),
-      ),
+      sectionHead("Recently added", el("a", { class: "section-link", href: "#/library" }, "All games")),
     );
+    if (recentResult.status === "fulfilled") recentSection.append(recentPanel(recentResult.value));
+    else recentSection.append(errorState(recentResult.reason, load));
+  }
 
-    if (recentResult.status === "fulfilled" && recentResult.value?.items?.length) {
-      const grid = el("div", { class: "game-grid" });
-      recentResult.value.items.forEach((rom, index) => grid.append(gameCard(rom, index)));
-      recentSection.append(grid);
-    } else if (recentResult.status === "rejected") {
-      recentSection.append(
-        errorState(recentResult.reason, () => location.reload()),
-      );
-    } else {
-      recentSection.append(
-        emptyStateFor(
-          "No new tapes yet",
-          "When RomM scans a game, it will show up here.",
-          el("a", { class: "btn btn-keycap btn-yellow", href: "#/library" }, "Open library"),
-        ),
-      );
-    }
-  })();
+  async function load() {
+    fillLoading();
+    const results = await Promise.allSettled([
+      api.stats(),
+      api.platforms(),
+      /* GET /api/saves/summary requires rom_id in RomM 5.4.1, so Home summarizes GET /api/saves. */
+      api.saves(),
+      api.activity(),
+      api.roms(
+        { limit: RAIL_SIZE, order_by: "created_at", order_dir: "desc", with_total: false },
+        { cacheKey: "home:recent" },
+      ),
+    ]);
+    fillResults(results);
+  }
 
+  root.append(hero, statsSection, systemsSection, savesSection, activitySection, recentSection);
+  void load();
   return root;
 }
-
-function emptyStateFor(title, note, action) {
-  return el(
-    "div",
-    { class: "empty-state" },
-    el("div", { class: "empty-tape", "aria-hidden": "true" }, el("span", { class: "reel-line" })),
-    el("h2", {}, title),
-    el("p", { class: "note" }, note),
-    action || null,
-  );
-}
-
-/* Keep platformLabelOf imported for future rails without another import. */
-void platformLabelOf;
-void loadingLine;
-void openModal;
-void skeletonTicket;
