@@ -693,6 +693,14 @@ try {
           mintRelay();
           return send(route, { token: tok, rotated: true });
         }
+        if (path === "/register" && req.method() === "POST") {
+          const body = JSON.parse(req.postData() || "{}");
+          if (body.token === relayState.rommToken) {
+            if (relayState.claimId) relayState.used.add(relayState.claimId);
+            mintRelay();
+          }
+          return send(route, { id: 3, username: body.username, email: body.email, enabled: true }, 201);
+        }
         return send(route, { detail: "Not found" }, 404);
       });
     };
@@ -729,7 +737,7 @@ try {
       "Create account shows live QR when panel is enabled",
     );
 
-    /* 4. Friend scans claim-1 -> gets romm token & rotates relay to claim-2 */
+    /* 4. Friend scans claim-1 -> gets romm token & submits form through relay /register */
     const scanner = await newPage(browser, { signedIn: false });
     await attachRelay(scanner.page);
     await scanner.page.goto(`${base}?claim=claim-1#/register`);
@@ -737,6 +745,16 @@ try {
     assert(
       (await scanner.page.inputValue("#register-token")) === "relay-romm-1",
       "scanning ?claim=claim-1 claims single-use RomM token into form",
+    );
+    await scanner.page.fill("#register-username", "relayfriend");
+    await scanner.page.fill("#register-email", "relayfriend@example.com");
+    await scanner.page.fill("#register-password", "supersecret");
+    await scanner.page.fill("#register-confirm", "supersecret");
+    await scanner.page.click('button[type="submit"]');
+    await scanner.page.waitForSelector(".stat-card", { timeout: 10_000 });
+    assert(
+      await scanner.page.isVisible("text=Library stats"),
+      "relay registration submits through Worker /register and auto-logins",
     );
 
     /* 5. Open Create account QR screen updates to claim-2 (never stays on used QR) */
@@ -750,11 +768,13 @@ try {
       "open Create account QR updates to claim-2 after scan",
     );
 
-    /* 6. Reusing scanned ?claim=claim-1 fails with already-used message */
-    await scanner.page.goto(`${base}?claim=claim-1#/register`);
-    await scanner.page.waitForSelector("[data-claim-error]", { timeout: 10_000 });
+    /* 6. Another friend scanning already-used ?claim=claim-1 fails with already-used message */
+    const scanner2 = await newPage(browser, { signedIn: false });
+    await attachRelay(scanner2.page);
+    await scanner2.page.goto(`${base}?claim=claim-1#/register`);
+    await scanner2.page.waitForSelector("[data-claim-error]", { timeout: 10_000 });
     assert(
-      await scanner.page.isVisible("text=QR code already used"),
+      await scanner2.page.isVisible("text=QR code already used"),
       "rescanning used QR link rejects instead of showing used token",
     );
 

@@ -611,6 +611,13 @@ export const api = {
   },
 
   register({ username, email, password, token }) {
+    if (hasSignupRelay()) {
+      return relayRequest("/register", {
+        method: "POST",
+        body: { username, email, password, token },
+        timeout: 20_000,
+      });
+    }
     return rawRequest("/users/register", {
       method: "POST",
       body: { username, email, password, token },

@@ -72,11 +72,23 @@ async function readJsonBody(request) {
   }
 }
 
+function extractCsrfCookie(headers) {
+  const list = typeof headers.getSetCookie === "function"
+    ? headers.getSetCookie()
+    : [headers.get("set-cookie") || ""];
+  for (const raw of list) {
+    const match = String(raw || "").match(/romm_csrftoken=([^;,\s]+)/);
+    if (match) return match[1];
+  }
+  return "";
+}
+
 export class SignupRelayDO {
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
     this.ipClaimAt = new Map();
+    this.ipRegisterAt = new Map();
     this.recentMints = [];
     this.initialized = false;
   }
@@ -377,6 +389,80 @@ export class SignupRelayDO {
         }
 
         return json({ token: tokenToReturn, rotated }, 200, request, this.env);
+      }
+
+      if (path === "/register" && request.method === "POST") {
+        const ip = request.headers.get("CF-Connecting-IP") || "";
+        const now = Date.now();
+        if (ip) {
+          const prev = this.ipRegisterAt.get(ip) || 0;
+          if (now - prev < CLAIM_COOLDOWN_MS) {
+            return json({ detail: "Slow down a moment and try submitting again." }, 429, request, this.env);
+          }
+          if (this.ipRegisterAt.size > 500) this.ipRegisterAt.clear();
+          this.ipRegisterAt.set(ip, now);
+        }
+
+        const body = await readJsonBody(request);
+        const payload = {
+          username: String(body?.username || "").trim(),
+          email: String(body?.email || "").trim(),
+          password: String(body?.password || ""),
+          token: String(body?.token || "").trim(),
+        };
+        if (!payload.username || !payload.email || !payload.password || !payload.token) {
+          return json({ detail: "Fill in every field, including the invite token." }, 422, request, this.env);
+        }
+
+        const romm = String(this.env.ROMM_ORIGIN || "").replace(/\/+$/, "");
+        const hbRes = await fetch(`${romm}/api/heartbeat`, {
+          headers: { Accept: "application/json" },
+        });
+        const csrf = extractCsrfCookie(hbRes.headers);
+        if (!hbRes.ok || !csrf) {
+          return json({ detail: "Couldn't reach RomM to start registration." }, 502, request, this.env);
+        }
+
+        const regRes = await fetch(`${romm}/api/users/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Origin: romm,
+            Referer: `${romm}/register`,
+            Cookie: `romm_csrftoken=${csrf}`,
+            "X-CSRFToken": csrf,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const rawText = await regRes.text().catch(() => "");
+        let regData;
+        try {
+          regData = rawText ? JSON.parse(rawText) : {};
+        } catch {
+          regData = { detail: rawText.slice(0, 300) || `RomM returned ${regRes.status}.` };
+        }
+
+        if (regRes.ok) {
+          const state = this.getState();
+          if (state.enabled && payload.token === state.romm_token) {
+            if (state.claim_id) {
+              this.sql().exec(
+                "INSERT OR REPLACE INTO used_claims (claim_id, used_at) VALUES (?, ?)",
+                state.claim_id,
+                Date.now(),
+              );
+            }
+            try {
+              await this.mintInvite();
+            } catch {
+              /* Registration succeeded; next poll retries minting. */
+            }
+          }
+        }
+
+        return json(regData, regRes.status, request, this.env);
       }
 
       if (path === "/registered" && request.method === "POST") {

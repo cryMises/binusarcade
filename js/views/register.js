@@ -242,7 +242,9 @@ export function registerView() {
 
       try {
         await api.register(values);
-        void api.relayRegistered(values.token);
+        if (!hasSignupRelay()) {
+          void api.relayRegistered(values.token);
+        }
       } catch (error) {
         idleButton();
         if (error?.status === 422) {

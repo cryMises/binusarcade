@@ -73,6 +73,26 @@ async function checkRelayDO() {
       mintSeq += 1;
       return new Response(JSON.stringify({ token: `romm-invite-${mintSeq}`, url: null }), { status: 201 });
     }
+    if (target.endsWith("/api/heartbeat")) {
+      return new Response(JSON.stringify({ SYSTEM: { VERSION: "5.4.1" } }), {
+        status: 200,
+        headers: { "Set-Cookie": "romm_csrftoken=csrf-test-token; Path=/; SameSite=Lax" },
+      });
+    }
+    if (target.endsWith("/api/users/register")) {
+      const cookie = init.headers?.Cookie || "";
+      const csrf = init.headers?.["X-CSRFToken"] || "";
+      if (!cookie.includes("romm_csrftoken=csrf-test-token") || csrf !== "csrf-test-token") {
+        return new Response(JSON.stringify({ detail: "CSRF token verification failed" }), { status: 403 });
+      }
+      const payload = JSON.parse(init.body || "{}");
+      if (payload.username === "bad") {
+        return new Response(JSON.stringify({ detail: "Invalid token" }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ id: 9, username: payload.username, email: payload.email, enabled: true }), {
+        status: 201,
+      });
+    }
     throw new Error(`Unexpected fetch in DO test: ${target}`);
   };
 
@@ -111,6 +131,14 @@ async function checkRelayDO() {
     const claimOk = await claimOkRes.json();
     const pub2 = await (await call("/invite")).json();
     const reuseRes = await call("/claim", { method: "POST", body: { claimId: pub1.claimId } });
+    const regBadRes = await call("/register", {
+      method: "POST",
+      body: { username: "bad", email: "bad@example.com", password: "password123", token: "wrong" },
+    });
+    const regOkRes = await call("/register", {
+      method: "POST",
+      body: { username: "friend", email: "friend@example.com", password: "password123", token: claimOk.token },
+    });
 
     const disableRes = await call("/admin/state", { method: "POST", body: { enabled: false }, token: "admin-jwt" });
     const disabledAfter = await disableRes.json();
@@ -131,6 +159,7 @@ async function checkRelayDO() {
         Boolean(pub2.claimId) &&
         pub2.claimId !== pub1.claimId,
       reuseRejected410: reuseRes.status === 410,
+      registerProxiesCsrf: regBadRes.status === 400 && regOkRes.status === 201,
       disableClearsAndBlocks: disabledAfter.enabled === false && claimDisabledRes.status === 403,
     };
   } finally {
@@ -160,6 +189,7 @@ const checks = [
   ["Relay DO mints claim without leaking token", relayChecks.enabledMintsClaim],
   ["Relay DO claim returns token and rotates", relayChecks.claimReturnsTokenAndRotates],
   ["Relay DO rejects reused QR with 410", relayChecks.reuseRejected410],
+  ["Relay DO proxies register with CSRF cookie", relayChecks.registerProxiesCsrf],
   ["Relay DO disable clears and blocks claims", relayChecks.disableClearsAndBlocks],
 ];
 
