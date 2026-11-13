@@ -120,9 +120,9 @@ export function shelfView(ctx) {
     subtitle,
   );
 
-  const countsRow = el("div", { class: "shelf-counts stats-grid" });
-  const chipsRow = el("div", { class: "filter-row shelf-chips", role: "tablist", "aria-label": t("Shelf") });
-  const grid = el("div", { class: "showcase-grid" });
+  const countsRow = el("div", { class: "shelf-counts" });
+  const chipsRow = el("div", { class: "shelf-chips", role: "tablist", "aria-label": t("Shelf") });
+  const grid = el("div", { class: "game-grid" });
   const moreWrap = el("div", { class: "load-more" });
 
   root.append(head, countsRow, chipsRow, grid, moreWrap, siteFooter());
@@ -143,7 +143,7 @@ export function shelfView(ctx) {
         el(
           "button",
           {
-            class: `chip chip-filter${active ? " is-active" : ""}`,
+            class: `chip-topic ${active ? "on" : ""}`,
             type: "button",
             role: "tab",
             "aria-selected": String(active),
@@ -171,10 +171,9 @@ export function shelfView(ctx) {
       countsRow.append(
         el(
           "div",
-          { class: "stat-card shelf-stat" },
-          el("span", { class: "stat-icon", "aria-hidden": "true" }, icon(seg.icon || "grid", 18)),
-          el("span", { class: "stat-value" }, String(count)),
-          el("span", { class: "stat-label" }, t(seg.label)),
+          { class: "shelf-stat" },
+          el("span", { class: "shelf-stat-value" }, String(count)),
+          el("span", { class: "shelf-stat-label" }, t(seg.label)),
         ),
       );
     }
