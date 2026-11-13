@@ -278,16 +278,22 @@ export function homeView(ctx) {
     );
     clear(systemsSection);
     systemsSection.append(
-      sectionHead(t("Systems"), el("a", { class: "section-link", href: "#/library" }, t("Browse"))),
+      sectionHead(el("span", { id: "home-systems-title" }, t("Systems")), el("a", { class: "section-link", href: "#/library" }, t("Browse"))),
       el("div", { class: "system-list" }, ...Array.from({ length: 4 }, () => el("div", { class: "skeleton skeleton-row" }))),
     );
     clear(savesSection);
-    savesSection.append(sectionHead(t("Your saves")), el("div", { class: "skeleton skeleton-block" }));
+    savesSection.append(
+      sectionHead(el("span", { id: "home-saves-title" }, t("Your saves"))),
+      el("div", { class: "skeleton skeleton-block" }),
+    );
     clear(activitySection);
-    activitySection.append(sectionHead(t("Recent activity")), el("div", { class: "skeleton skeleton-block" }));
+    activitySection.append(
+      sectionHead(el("span", { id: "home-activity-title" }, t("Recent activity"))),
+      el("div", { class: "skeleton skeleton-block" }),
+    );
     clear(recentSection);
     recentSection.append(
-      sectionHead(t("Recently added"), el("a", { class: "section-link", href: "#/library" }, t("All games"))),
+      sectionHead(el("span", { id: "home-recent-title" }, t("Recently added")), el("a", { class: "section-link", href: "#/library" }, t("All games"))),
       skeletonGrid(6),
     );
   }
@@ -302,24 +308,24 @@ export function homeView(ctx) {
 
     clear(systemsSection);
     systemsSection.append(
-      sectionHead(t("Systems"), el("a", { class: "section-link", href: "#/library" }, t("Browse"))),
+      sectionHead(el("span", { id: "home-systems-title" }, t("Systems")), el("a", { class: "section-link", href: "#/library" }, t("Browse"))),
     );
     if (platformsResult.status === "fulfilled") systemsSection.append(systemsPanel(platformsResult.value));
     else systemsSection.append(errorState(platformsResult.reason, load));
 
     clear(savesSection);
-    savesSection.append(sectionHead(t("Your saves")));
+    savesSection.append(sectionHead(el("span", { id: "home-saves-title" }, t("Your saves"))));
     if (savesResult.status === "fulfilled") savesSection.append(savesPanel(savesResult.value));
     else savesSection.append(errorState(savesResult.reason, load));
 
     clear(activitySection);
-    activitySection.append(sectionHead(t("Recent activity")));
+    activitySection.append(sectionHead(el("span", { id: "home-activity-title" }, t("Recent activity"))));
     if (activityResult.status === "fulfilled") activitySection.append(activityPanel(activityResult.value));
     else activitySection.append(errorState(activityResult.reason, load));
 
     clear(recentSection);
     recentSection.append(
-      sectionHead(t("Recently added"), el("a", { class: "section-link", href: "#/library" }, t("All games"))),
+      sectionHead(el("span", { id: "home-recent-title" }, t("Recently added")), el("a", { class: "section-link", href: "#/library" }, t("All games"))),
     );
     if (recentResult.status === "fulfilled") recentSection.append(recentPanel(recentResult.value));
     else recentSection.append(errorState(recentResult.reason, load));

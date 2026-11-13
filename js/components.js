@@ -581,6 +581,7 @@ export function langSwitch({ label } = {}) {
   });
 
   for (const code of LOCALES) {
+    const name = code === "id" ? "Bahasa Indonesia" : "English";
     group.append(
       el(
         "button",
@@ -589,10 +590,11 @@ export function langSwitch({ label } = {}) {
           type: "button",
           "data-lang": code,
           lang: code,
+          "aria-label": name,
           "aria-pressed": String(locale() === code),
-          title: code === "id" ? "Bahasa Indonesia" : "English",
+          title: name,
         },
-        code === "id" ? "ID" : "EN",
+        code.toUpperCase(),
       ),
     );
   }

@@ -251,13 +251,14 @@ export function shelfView(ctx) {
       clear(grid);
       if (!items.length) {
         grid.append(
-          emptyState(
-            t("Nothing here yet"),
-            seg.key === "all"
-              ? t("Your shelf will fill up as you play and track games in RomM.")
-              : t("No games in this section yet."),
-            el("a", { class: "btn btn-keycap-sm btn-yellow", href: "#/library" }, icon("grid", 18), t("Browse the library")),
-          ),
+          emptyState({
+            title: t("Nothing here yet"),
+            note:
+              seg.key === "all"
+                ? t("Your shelf will fill up as you play and track games in RomM.")
+                : t("No games in this section yet."),
+            action: el("a", { class: "btn btn-keycap-sm btn-yellow", href: "#/library" }, icon("grid", 18), t("Browse the library")),
+          }),
         );
       } else {
         items.forEach((rom, i) => grid.append(shelfCard(rom, i)));
@@ -280,7 +281,7 @@ export function shelfView(ctx) {
     } catch (error) {
       if (token !== queryToken || isAbortError(error)) return;
       clear(grid);
-      grid.append(errorState(error, { onRetry: () => load(true) }));
+      grid.append(errorState(error, () => load(true)));
     } finally {
       if (token === queryToken) loading = false;
     }
@@ -297,11 +298,11 @@ export function shelfView(ctx) {
         clear(chipsRow);
         clear(grid);
         grid.append(
-          emptyState(
-            t("Your shelf is empty"),
-            t("Play or track games in RomM and they’ll show up here."),
-            el("a", { class: "btn btn-keycap-sm btn-yellow", href: "#/library" }, icon("grid", 18), t("Browse the library")),
-          ),
+          emptyState({
+            title: t("Your shelf is empty"),
+            note: t("Play or track games in RomM and they’ll show up here."),
+            action: el("a", { class: "btn btn-keycap-sm btn-yellow", href: "#/library" }, icon("grid", 18), t("Browse the library")),
+          }),
         );
         return;
       }
@@ -311,7 +312,7 @@ export function shelfView(ctx) {
     } catch (error) {
       if (isAbortError(error)) return;
       clear(grid);
-      grid.append(errorState(error, { onRetry: init }));
+      grid.append(errorState(error, init));
     }
   }
 

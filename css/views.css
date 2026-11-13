@@ -325,7 +325,7 @@
 .search-groove .btn {
   flex: 0 0 auto;
   border-radius: var(--radius-pill);
-  min-height: 40px;
+  min-height: 44px;
   padding-inline: 20px;
 }
 

@@ -3,7 +3,7 @@
  * core downloads are never put in this cache.
  */
 
-const VERSION = "binusarcade-v18";
+const VERSION = "binusarcade-v19";
 const SHELL = [
   "./",
   "./index.html",
