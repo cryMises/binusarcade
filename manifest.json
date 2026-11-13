@@ -2,13 +2,13 @@
   "id": "./",
   "name": "Binus Arcade",
   "short_name": "Binus Arcade",
-  "description": "A paper-and-cartridge front end for a self-hosted RomM library.",
+  "description": "A phone-first front end for a self-hosted RomM game library.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#FBF3E4",
-  "theme_color": "#FBF3E4",
+  "background_color": "#0D1117",
+  "theme_color": "#2a0145",
   "categories": ["games", "entertainment"],
   "icons": [
     {

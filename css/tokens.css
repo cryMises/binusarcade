@@ -1,72 +1,84 @@
-/* Binus Arcade tokens — katchup design language, night-paper dark mode. */
+/* Binus Arcade tokens — stock RomM 5.4.1 theme values (Vuetify Material). */
+
 :root {
   color-scheme: light;
 
-  --cream: #fbf3e4;
-  --panel: #ffffff;
-  --panel-soft: #fff9ec;
-  --cocoa: #2e1e14;
-  --ink-soft: #6a5344;
+  --primary: #371f69;
+  --secondary: #553e98;
+  --accent: #e1a38d;
+  --background: #f2f4f8;
+  --surface: #ffffff;
+  --toplayer: #e4e9f0;
+  --primary-lighten: #7850e6;
+  --primary-darken: #452788;
+  --secondary-lighten: #f0ebfa;
+  --secondary-darken: #9b8bd0;
 
-  --red: #ff4949;
-  --mint: #2fe0a8;
-  --blue: #5b8cff;
-  --yellow: #ffce00;
-  --pink: #ff7bb8;
-  --orange: #ff8a3d;
+  --romm-red: #da3633;
+  --romm-green: #3fb950;
+  --romm-blue: #0070f3;
+  --romm-white: #fefdfe;
+  --romm-gray: #5d5d5d;
+  --romm-black: #000000;
+  --romm-gold: #ffd700;
 
-  --line: rgba(46, 30, 20, 0.18);
-  --r: 18px;
-  --r-sm: 12px;
-  --shadow-cocoa: #2e1e14;
-  --elev: 0 5px 0 var(--shadow-cocoa);
-  --elev-sm: 0 3px 0 var(--shadow-cocoa);
+  --on-primary: #ffffff;
+  --on-surface: rgba(0, 0, 0, 0.87);
+  --on-surface-muted: rgba(0, 0, 0, 0.6);
+  --on-surface-faint: rgba(0, 0, 0, 0.38);
 
-  --display: "Baloo 2", system-ui, sans-serif;
-  --body: "Nunito", system-ui, sans-serif;
-  --marker: "Permanent Marker", cursive;
+  --line: rgba(0, 0, 0, 0.12);
+  --chip-bg: rgba(0, 0, 0, 0.045);
+  --hover: rgba(0, 0, 0, 0.045);
+  --scrim: rgba(0, 0, 0, 0.5);
+  --danger-soft: rgba(218, 54, 51, 0.1);
+  --success-soft: rgba(63, 185, 80, 0.12);
+  --warn-soft: rgba(255, 215, 0, 0.16);
 
-  --cat: #5b8cff;
-  --red-ink: #c03030;
-  --green-ink: #0a7d57;
-  --pop: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 10px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.08), 0 10px 28px rgba(0, 0, 0, 0.12);
 
-  --accent-ink: #2e1e14;
-  --focus: #1f5eff;
-  --scrim: rgba(46, 30, 20, 0.52);
-  --danger-soft: #ffe9e9;
-  --success-soft: #e4fff4;
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
 
-  --dot-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='2' cy='2' r='1.1' fill='%232E1E14' fill-opacity='0.07'/%3E%3C/svg%3E");
+  --font: "Segoe UI", system-ui, -apple-system, "Inter", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --focus: #7850e6;
+  --topbar-h: 64px;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --cream: #171210;
-  --panel: #241c17;
-  --panel-soft: #2d241d;
-  --cocoa: #f6e9d8;
-  --ink-soft: #c7b09a;
+  --primary: #8b74e8;
+  --secondary: #9e8cd6;
+  --accent: #e1a38d;
+  --background: #0d1117;
+  --surface: #161b22;
+  --toplayer: #1c2330;
+  --primary-lighten: #a18fff;
+  --primary-darken: #6043c8;
+  --secondary-lighten: #ebe7fa;
+  --secondary-darken: #7a6bb4;
 
-  --red: #ff6b6b;
-  --mint: #43edb8;
-  --blue: #7ca6ff;
-  --yellow: #ffd84d;
-  --pink: #ff94c6;
-  --orange: #ffa166;
+  --on-surface: rgba(255, 255, 255, 0.92);
+  --on-surface-muted: rgba(255, 255, 255, 0.62);
+  --on-surface-faint: rgba(255, 255, 255, 0.38);
 
-  --line: rgba(246, 233, 216, 0.22);
-  --shadow-cocoa: #070504;
+  --line: rgba(255, 255, 255, 0.1);
+  --chip-bg: rgba(255, 255, 255, 0.07);
+  --hover: rgba(255, 255, 255, 0.06);
+  --scrim: rgba(0, 0, 0, 0.7);
+  --danger-soft: rgba(218, 54, 51, 0.18);
+  --success-soft: rgba(63, 185, 80, 0.18);
+  --warn-soft: rgba(255, 215, 0, 0.14);
 
-  --cat: #7ca6ff;
-  --red-ink: #ff9e9e;
-  --green-ink: #65f0c0;
-  --focus: #9cbbff;
-  --scrim: rgba(0, 0, 0, 0.68);
-  --danger-soft: #3a1d1d;
-  --success-soft: #14342a;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 12px 30px rgba(0, 0, 0, 0.55);
 
-  --dot-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='2' cy='2' r='1.1' fill='%23F6E9D8' fill-opacity='0.075'/%3E%3C/svg%3E");
+  --focus: #a18fff;
 }

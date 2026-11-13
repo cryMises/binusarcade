@@ -348,14 +348,14 @@ export function libraryView(ctx) {
     if (!items.length) {
       gridSlot.replaceChildren(
         emptyState({
-          title: state.q ? "No tape by that name" : "This shelf is empty",
+          title: state.q ? "No games matched" : "No games here yet",
           note: state.q
             ? `Nothing matched “${state.q}”. Try a shorter search or clear the filters.`
             : "Try a different filter. If RomM has games here, they will show up after the next scan.",
           action: el(
             "a",
             { class: "btn btn-keycap btn-yellow", href: platformSlug ? `#/platform/${platformSlug}` : "#/library" },
-            "Reset this shelf",
+            "Reset filters",
           ),
         }),
       );

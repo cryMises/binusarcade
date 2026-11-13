@@ -236,7 +236,7 @@ export function platformWashi(rom, variant = "") {
 }
 
 export function gameCard(rom, index = 0) {
-  const tilt = index % 2 === 0 ? "-1.5deg" : "1.5deg";
+  void index;
   const accent = colorForPlatform(platformSlugOf(rom), platformLabelOf(rom));
   const year = formatReleaseYear(rom.metadatum?.first_release_date);
   const rating = rom.metadatum?.average_rating;
@@ -247,7 +247,7 @@ export function gameCard(rom, index = 0) {
     {
       class: "game-card",
       href: `#/game/${encodeURIComponent(rom.id)}`,
-      style: { "--tilt": tilt, "--cart": accent },
+      style: { "--cart": accent },
       "aria-label": `${shortName(rom)} on ${platformLabelOf(rom)}`,
     },
     el("div", { class: "game-cover" }, cover(rom, { size: "small" })),
@@ -279,42 +279,33 @@ export function platformCart(platform) {
       style: { "--cart": accent },
       "aria-label": `${platform.display_name || platform.name}: ${platform.rom_count} games`,
     },
-    el("span", { class: "cart-spine", "aria-hidden": "true" }),
     el(
       "div",
       { class: "cart-system" },
-      el("span", { class: "cart-abbr", style: { "--cart": accent } }, abbreviation),
-      el("span", { class: "chip-cat", style: { "--cart": accent } }, `${platform.rom_count || 0}`),
+      el("span", { class: "cart-abbr" }, abbreviation),
+      el("span", { class: "chip-cat" }, `${platform.rom_count || 0}`),
     ),
     el("div", { class: "cart-name" }, platform.display_name || platform.name),
-    el("div", { class: "cart-count" }, "games on the shelf"),
     el(
       "div",
       { class: "cart-delta" },
-      el("span", {}, "Open shelf"),
-      el("span", {}, "→"),
+      el("span", {}, "Open"),
+      el("span", {}, `${platform.rom_count || 0} games`),
     ),
   );
 }
 
 export function continueTicket(rom, { playtime = 0, sessions = 0 } = {}) {
-  const accent = colorForPlatform(platformSlugOf(rom), platformLabelOf(rom));
   return el(
     "article",
-    { class: "teletype-ticket continue-ticket", style: { "--cat": accent } },
-    el("span", { class: "ticket-spine", "aria-hidden": "true" }),
+    { class: "teletype-ticket continue-ticket" },
     el("div", { class: "continue-cover" }, cover(rom, { size: "small", eager: true })),
     el(
       "div",
       { class: "continue-copy" },
       el("div", { class: "eyebrow" }, "Continue playing"),
       el("h3", {}, shortName(rom)),
-      el(
-        "div",
-        { class: "continue-platform" },
-        platformWashi(rom, "mint"),
-        el("span", { class: "rubber-stamp green" }, "Save sync"),
-      ),
+      el("div", { class: "continue-platform" }, platformWashi(rom)),
       el(
         "div",
         { class: "continue-ledger" },
@@ -345,13 +336,13 @@ export function continueTicket(rom, { playtime = 0, sessions = 0 } = {}) {
       { class: "continue-actions" },
       el(
         "a",
-        { class: "btn btn-keycap btn-mint", href: `#/play/${encodeURIComponent(rom.id)}` },
-        icon("play", 19),
-        "PLAY",
+        { class: "btn btn-mint", href: `#/play/${encodeURIComponent(rom.id)}` },
+        icon("play", 18),
+        "Play",
       ),
       el(
         "a",
-        { class: "btn btn-keycap-sm btn-ghost", href: `#/game/${encodeURIComponent(rom.id)}` },
+        { class: "btn btn-ghost", href: `#/game/${encodeURIComponent(rom.id)}` },
         "Details",
       ),
     ),
@@ -367,14 +358,14 @@ export function emptyContinue() {
       "div",
       {},
       el("div", { class: "eyebrow" }, "Continue playing"),
-      el("h3", {}, "Nothing on pause yet."),
-      el("p", { class: "note" }, "Pick a cartridge from the shelf and the next session lands here."),
+      el("h3", {}, "Nothing on pause yet"),
+      el("p", { class: "note" }, "Pick a game from the library and the next session lands here."),
     ),
     el(
       "a",
-      { class: "btn btn-keycap btn-yellow", href: "#/library" },
-      icon("grid", 19),
-      "Browse tapes",
+      { class: "btn btn-yellow", href: "#/library" },
+      icon("grid", 18),
+      "Browse library",
     ),
   );
 }
@@ -415,9 +406,8 @@ export function emptyState({ title, note, action, tone = "" }) {
   return el(
     "div",
     { class: `empty-state ${tone}` },
-    el("div", { class: "empty-tape", "aria-hidden": "true" }, el("span", { class: "reel-line" })),
-    el("h2", {}, title || "Nothing on this shelf"),
-    el("p", { class: "note" }, note || "Carty checked every tape and found an empty box."),
+    el("h2", {}, title || "Nothing here yet"),
+    el("p", { class: "note" }, note || "No matching items were found."),
     action || null,
   );
 }
@@ -434,18 +424,18 @@ export function errorState(error, retry) {
     : el(
         "a",
         { class: "btn btn-keycap btn-yellow", href: "#/" },
-        "Back to the Hall",
+        "Back to Home",
       );
 
   return emptyState({
-    title: "The tape jammed",
+    title: "Couldn't load this section",
     note: message,
     action,
     tone: "error-card",
   });
 }
 
-export function loadingLine(text = "Loading the shelf…") {
+export function loadingLine(text = "Loading…") {
   return el(
     "div",
     { class: "loading-line", role: "status" },

@@ -26,7 +26,7 @@ export function applyTheme(theme) {
   document.documentElement.style.colorScheme = next;
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", next === "dark" ? "#171210" : "#FBF3E4");
+  if (meta) meta.setAttribute("content", "#2a0145");
 
   document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
     const dark = next === "dark";

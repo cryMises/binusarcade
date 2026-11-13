@@ -175,13 +175,13 @@ export function scoresView() {
       el(
         "p",
         { class: "note" },
-        "Leaderboards, streaks and the arcade jukebox are parked on the next tape. For now, your playtime is already being kept in RomM.",
+        "Leaderboards and player stats are coming in a later update. Your playtime is already tracked in RomM.",
       ),
       el(
         "div",
         { class: "stub-actions" },
         el("a", { class: "btn btn-keycap btn-mint", href: "#/library" }, icon("grid", 18), "Browse the library"),
-        el("a", { class: "btn btn-keycap-sm btn-ghost", href: "#/" }, "Back to the Hall"),
+        el("a", { class: "btn btn-keycap-sm btn-ghost", href: "#/" }, "Back to Home"),
       ),
     ),
     siteFooter(),

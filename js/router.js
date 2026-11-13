@@ -72,16 +72,16 @@ function fallback(error) {
   div.className = "view wrap";
   const marker = document.createElement("h1");
   marker.className = "marker";
-  marker.textContent = error ? "Lost tape" : "Wrong shelf";
+  marker.textContent = error ? "Couldn't load page" : "Page not found";
   const note = document.createElement("p");
   note.className = "note";
   note.textContent = error
-    ? "That page didn't load. Head back to the Hall and try another cartridge."
-    : "That page doesn't exist. The tape might have unspooled.";
+    ? "That page didn't load. Head back to Home and try again."
+    : "That page doesn't exist.";
   const link = document.createElement("a");
   link.className = "btn btn-keycap btn-mint";
   link.href = "#/";
-  link.textContent = "Back to the Hall";
+  link.textContent = "Back to Home";
   div.append(marker, note, link);
   return div;
 }
@@ -114,7 +114,7 @@ async function run() {
   let node = null;
   if (!match) {
     node = fallback();
-    setDocumentTitle("Lost tape");
+    setDocumentTitle("Page not found");
   } else {
     try {
       const result = await match.handler(ctx);
@@ -123,7 +123,7 @@ async function run() {
     } catch (error) {
       console.error("Route failed", error);
       node = fallback(error);
-      setDocumentTitle("Lost tape");
+      setDocumentTitle("Couldn't load page");
     }
   }
 
