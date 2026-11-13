@@ -27,11 +27,9 @@ const config = await import(pathToFileURL(join(root, "js/config.js")));
 const api = await import(pathToFileURL(join(root, "js/api.js")));
 
 const checks = [
-  ["GBA core", config.coresForPlatform("gba")[0] === "mgba"],
-  ["PS alias", config.coresForPlatform("ps")[0] === "pcsx_rearmed"],
-  ["NDS core", config.coresForPlatform("nds")[0] === "melonds"],
-  ["Ruffle browser", config.isRufflePlatform("browser") === true],
-  ["Unknown platform safe", config.coresForPlatform("mystery").length === 0],
+  ["Platform alias", config.normalizePlatform("ps") === "psx"],
+  ["Platform accent", Boolean(config.colorForPlatform("gba", "Game Boy Advance"))],
+  ["Unknown platform safe", config.platformLabelOf({ platform_slug: "mystery" }) === "mystery"],
   ["Array query repeats", api.buildUrl("/roms", { platform_ids: [1, 2] }).includes("platform_ids=1&platform_ids=2")],
   ["Empty query dropped", !api.buildUrl("/roms", { search_term: "" }).includes("search_term")],
   ["Content URL", api.romContentUrl({ id: 7, fs_name: "game.gba" }, { id: 9, file_name: "game.gba" }).includes("/api/roms/7/content/game.gba")],

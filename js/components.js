@@ -241,8 +241,9 @@ export function gameCard(rom, index = 0) {
   const year = formatReleaseYear(rom.metadatum?.first_release_date);
   const rating = rom.metadatum?.average_rating;
   const meta = [shortPlatformLabel(rom), year].filter(Boolean).join(" · ");
+  const coverNode = cover(rom, { size: "small" });
 
-  return el(
+  const card = el(
     "a",
     {
       class: "game-card",
@@ -250,7 +251,7 @@ export function gameCard(rom, index = 0) {
       style: { "--cart": accent },
       "aria-label": `${shortName(rom)} on ${platformLabelOf(rom)}`,
     },
-    el("div", { class: "game-cover" }, cover(rom, { size: "small" })),
+    el("div", { class: "game-cover" }, coverNode),
     el("span", { class: "game-title" }, shortName(rom)),
     el(
       "span",
@@ -260,6 +261,19 @@ export function gameCard(rom, index = 0) {
       rating ? ` · ${Math.round(rating)}%` : "",
     ),
   );
+
+  const img = coverNode.tagName === "IMG" ? coverNode : coverNode.querySelector?.("img");
+  const markWide = () => {
+    if (img?.naturalWidth && img?.naturalHeight && img.naturalWidth > img.naturalHeight * 1.15) {
+      card.classList.add("is-wide");
+    }
+  };
+  if (img) {
+    if (img.complete) markWide();
+    else img.addEventListener("load", markWide, { once: true });
+  }
+
+  return card;
 }
 
 export function platformCart(platform) {
@@ -291,81 +305,6 @@ export function platformCart(platform) {
       { class: "cart-delta" },
       el("span", {}, "Open"),
       el("span", {}, `${platform.rom_count || 0} games`),
-    ),
-  );
-}
-
-export function continueTicket(rom, { playtime = 0, sessions = 0 } = {}) {
-  return el(
-    "article",
-    { class: "teletype-ticket continue-ticket" },
-    el("div", { class: "continue-cover" }, cover(rom, { size: "small", eager: true })),
-    el(
-      "div",
-      { class: "continue-copy" },
-      el("div", { class: "eyebrow" }, "Continue playing"),
-      el("h3", {}, shortName(rom)),
-      el("div", { class: "continue-platform" }, platformWashi(rom)),
-      el(
-        "div",
-        { class: "continue-ledger" },
-        el(
-          "div",
-          { class: "mini-ledger" },
-          el("div", { class: "mini-ledger-label" }, "Playtime"),
-          el("div", { class: "mini-ledger-value" }, formatPlaytime(playtime)),
-        ),
-        el(
-          "div",
-          { class: "mini-ledger" },
-          el("div", { class: "mini-ledger-label" }, "Last played"),
-          el("div", { class: "mini-ledger-value" }, timeAgo(rom.rom_user?.last_played)),
-        ),
-        sessions
-          ? el(
-              "div",
-              { class: "mini-ledger" },
-              el("div", { class: "mini-ledger-label" }, "Sessions"),
-              el("div", { class: "mini-ledger-value" }, String(sessions)),
-            )
-          : null,
-      ),
-    ),
-    el(
-      "div",
-      { class: "continue-actions" },
-      el(
-        "a",
-        { class: "btn btn-mint", href: `#/play/${encodeURIComponent(rom.id)}` },
-        icon("play", 18),
-        "Play",
-      ),
-      el(
-        "a",
-        { class: "btn btn-ghost", href: `#/game/${encodeURIComponent(rom.id)}` },
-        "Details",
-      ),
-    ),
-  );
-}
-
-export function emptyContinue() {
-  return el(
-    "div",
-    { class: "teletype-ticket continue-empty" },
-    el("span", { class: "cartridge-mini", "aria-hidden": "true" }),
-    el(
-      "div",
-      {},
-      el("div", { class: "eyebrow" }, "Continue playing"),
-      el("h3", {}, "Nothing on pause yet"),
-      el("p", { class: "note" }, "Pick a game from the library and the next session lands here."),
-    ),
-    el(
-      "a",
-      { class: "btn btn-yellow", href: "#/library" },
-      icon("grid", 18),
-      "Browse library",
     ),
   );
 }

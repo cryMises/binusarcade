@@ -378,100 +378,6 @@
   height: 16px;
 }
 
-/* Continue ticket (kept for legacy callers) */
-
-.continue-ticket {
-  display: grid;
-  gap: 14px;
-  padding: 16px;
-  grid-template-areas:
-    "cover copy"
-    "actions actions";
-  grid-template-columns: 84px minmax(0, 1fr);
-}
-
-.continue-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--toplayer);
-  grid-area: cover;
-}
-
-.continue-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.continue-copy {
-  min-width: 0;
-  grid-area: copy;
-}
-
-.continue-copy h3 {
-  margin: 2px 0 6px;
-  font-size: 1.125rem;
-  font-weight: 500;
-  line-height: 1.25;
-}
-
-.continue-platform {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.continue-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  grid-area: actions;
-}
-
-.continue-ledger {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 10px;
-}
-
-.mini-ledger {
-  min-width: 80px;
-}
-
-.mini-ledger-label {
-  color: var(--on-surface-muted);
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.mini-ledger-value {
-  font-size: 0.9375rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  line-height: 1.3;
-}
-
-.continue-empty {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  padding: 18px 20px;
-}
-
-.continue-empty h3 {
-  font-size: 1rem;
-  font-weight: 500;
-}
-
 /* Systems shelf */
 
 .shelf {
@@ -577,36 +483,28 @@
   display: inline-flex;
 }
 
-/* Cover grid */
+/* Cover grid: dynamic image aspect ratio, max 3 per row, 2 per row for wide covers. */
 
 .game-grid {
   display: grid;
+  align-items: start;
   gap: 16px 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-@media (min-width: 540px) {
-  .game-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px 16px;
-  }
-}
-
-@media (min-width: 800px) {
-  .game-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1080px) {
-  .game-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1300px) {
+@media (min-width: 560px) {
   .game-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-auto-flow: dense;
+    gap: 18px 16px;
+  }
+
+  .game-grid > * {
+    grid-column: span 2;
+  }
+
+  .game-grid > .game-card.is-wide {
+    grid-column: span 3;
   }
 }
 
@@ -624,7 +522,6 @@
 
 .game-cover {
   position: relative;
-  aspect-ratio: 3 / 4;
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: var(--toplayer);
@@ -632,13 +529,13 @@
 }
 
 .game-cover img {
+  display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
 }
 
 .game-cover .fallback-cover {
-  height: 100%;
+  aspect-ratio: 3 / 4;
 }
 
 .game-title {
@@ -910,7 +807,6 @@
 
 .detail-cover {
   position: relative;
-  aspect-ratio: 3 / 4;
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: var(--toplayer);
@@ -918,12 +814,13 @@
 }
 
 .detail-cover img {
+  display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
 }
 
 .detail-cover .fallback-cover {
+  aspect-ratio: 3 / 4;
   padding: 18px;
 }
 
@@ -1139,237 +1036,6 @@
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.03em;
-}
-
-/* ---------- Play ---------- */
-
-.play-view {
-  padding-top: 8px;
-}
-
-body.is-playing .bottom-nav {
-  display: none;
-}
-
-body.is-playing .view {
-  padding-bottom: 32px;
-}
-
-.play-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.play-bar-copy {
-  min-width: 0;
-  margin-right: auto;
-}
-
-.play-bar-copy h1 {
-  font-size: clamp(18px, 4vw, 24px);
-  font-weight: 500;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-
-.play-stage-card {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-1);
-}
-
-.play-stage {
-  position: relative;
-  width: 100%;
-  min-height: 300px;
-  background: #000;
-}
-
-@media (min-width: 760px) {
-  .play-stage {
-    min-height: 460px;
-  }
-}
-
-.play-stage iframe {
-  display: block;
-  width: 100%;
-  height: min(68vh, 680px);
-  min-height: 320px;
-  border: 0;
-  background: #000;
-}
-
-.play-setup {
-  display: grid;
-  gap: 18px;
-  padding: 20px;
-}
-
-@media (min-width: 820px) {
-  .play-setup {
-    grid-template-columns: 120px minmax(0, 1fr);
-    gap: 24px;
-    padding: 24px;
-  }
-}
-
-.play-setup-cover {
-  width: 108px;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--toplayer);
-}
-
-.play-setup-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.play-setup-copy h2 {
-  margin: 4px 0 8px;
-  font-size: clamp(20px, 4.5vw, 28px);
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.play-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 10px 0 16px;
-}
-
-.play-start-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.play-start-row .btn {
-  flex: 1 1 180px;
-}
-
-@media (min-width: 620px) {
-  .play-start-row .btn {
-    flex: 0 0 auto;
-  }
-}
-
-.play-progress {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.progress-track {
-  height: 6px;
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: var(--toplayer);
-}
-
-.progress-fill {
-  height: 100%;
-  width: 0;
-  background: var(--primary);
-  transition: width 140ms linear;
-}
-
-.play-warning {
-  display: flex;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  background: var(--warn-soft);
-  color: var(--on-surface-muted);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.play-warning svg {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  color: var(--romm-gold);
-}
-
-.play-below {
-  display: grid;
-  gap: 16px;
-  margin-top: 18px;
-}
-
-@media (min-width: 900px) {
-  .play-below {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    align-items: start;
-  }
-}
-
-.play-below h2 {
-  font-size: 1.0625rem;
-  font-weight: 500;
-}
-
-.play-below .block {
-  min-width: 0;
-}
-
-.play-note-list {
-  display: grid;
-  gap: 8px;
-  color: var(--on-surface-muted);
-  font-size: 0.8125rem;
-  line-height: 1.55;
-}
-
-.play-note-list li {
-  position: relative;
-  padding-left: 16px;
-}
-
-.play-note-list li::before {
-  content: "";
-  position: absolute;
-  top: 0.55em;
-  left: 0;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--on-surface-faint);
-}
-
-.file-picker {
-  display: grid;
-  gap: 6px;
-  margin: 4px 0 16px;
-}
-
-.file-picker label {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  font-size: 0.8125rem;
-}
-
-.file-picker input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--primary);
 }
 
 /* ---------- Profile / stubs ---------- */

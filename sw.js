@@ -3,11 +3,10 @@
  * core downloads are never put in this cache.
  */
 
-const VERSION = "binusarcade-v6";
+const VERSION = "binusarcade-v7";
 const SHELL = [
   "./",
   "./index.html",
-  "./play-frame.html",
   "./manifest.json",
   "./css/tokens.css",
   "./css/components.css",
@@ -19,11 +18,9 @@ const SHELL = [
   "./js/theme.js",
   "./js/router.js",
   "./js/components.js",
-  "./js/play-frame.js",
   "./js/views/home.js",
   "./js/views/library.js",
   "./js/views/detail.js",
-  "./js/views/play.js",
   "./js/views/profile.js",
   "./js/views/register.js",
   "./icons/icon.svg",

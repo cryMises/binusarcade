@@ -145,10 +145,14 @@ async function mockRomm(page, { failContent = false } = {}) {
     }
 
     if (url.pathname.startsWith("/assets/")) {
+      const wide = url.pathname.includes("/3.png");
+      const w = wide ? 400 : 240;
+      const h = wide ? 200 : 360;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${wide ? "#6043C8" : "#371F69"}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="22">${w}x${h}</text></svg>`;
       return route.fulfill({
         status: 200,
-        headers: { "content-type": "image/png", ...cors },
-        path: join(root, "icons", "icon-192.png"),
+        headers: { "content-type": "image/svg+xml", ...cors },
+        body: svg,
       });
     }
 
@@ -370,73 +374,16 @@ try {
     await page.goto(`${base}#/game/1`);
     await page.waitForSelector(".detail-title", { timeout: 10_000 });
     assert(await page.isVisible("text=Mario Kart: Super Circuit"), "detail renders game title");
-    assert(await page.isVisible("text=PLAY"), "detail shows a PLAY action");
+    assert((await page.locator('a[href^="#/play/"]').count()) === 0, "detail has no play link");
     assert(await page.isVisible("text=Open in stock RomM"), "detail links to stock RomM");
     assert(await page.isVisible("text=Screenshots"), "detail renders screenshots");
     await page.screenshot({ path: join(screenshots, "detail-390.png"), fullPage: true });
 
     await page.goto(`${base}#/play/1`);
-    await page.waitForSelector('[data-start]', { timeout: 10_000 });
-    assert(await page.isVisible("text=START GAME"), "play page waits for an explicit start");
-    assert(await page.isVisible("text=Saves on RomM"), "play page renders save shelf");
+    await page.waitForSelector("text=Page not found", { timeout: 10_000 });
+    assert(await page.isVisible("text=Back to Home"), "removed /play route falls back cleanly");
+    assert((await page.locator("iframe").count()) === 0, "play route does not mount an emulator");
 
-    await page.goto(`${base}#/play/2`);
-    await page.waitForSelector('[data-start]', { timeout: 10_000 });
-    assert(await page.isVisible("text=DS touch screen"), "NDS play page surfaces the touch limitation");
-    await page.screenshot({ path: join(screenshots, "play-nds-390.png"), fullPage: true });
-
-    const widths = await page.evaluate(() => ({
-      scroll: document.documentElement.scrollWidth,
-      inner: window.innerWidth,
-    }));
-    assert(widths.scroll <= widths.inner + 1, "play view has no horizontal scroll at 390px");
-    await context.close();
-  }
-
-  /* A blocked cartridge download explains the failure instead of dumping the
-     browser's raw TypeError. */
-  {
-    const { context, page } = await newPage(browser, { failContent: true });
-    await page.goto(`${base}#/play/1`);
-    await page.waitForSelector("[data-start]", { timeout: 10_000 });
-    await page.click("[data-start]");
-    await page.waitForSelector("[data-play-error] .play-warning", { timeout: 10_000 });
-    const text = await page.locator("[data-play-error]").innerText();
-    assert(text.includes("browser blocked the file request"), "blocked download names the CORS/network cause");
-    assert(!text.includes("Failed to fetch"), "blocked download hides the raw TypeError");
-    await context.close();
-  }
-
-  /* Chromium's ResizeObserver warning is routine EJS noise, not a game
-     failure. Real errors must still reach the parent. */
-  {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.goto(`${base}play-frame.html`);
-    await page.evaluate(() => {
-      window.__messages = [];
-      window.addEventListener("message", (event) => window.__messages.push(event.data));
-      window.dispatchEvent(
-        new ErrorEvent("error", {
-          message: "ResizeObserver loop completed with undelivered notifications.",
-        }),
-      );
-      window.dispatchEvent(
-        new ErrorEvent("error", { message: "Wake Lock permission request denied" }),
-      );
-      window.dispatchEvent(new ErrorEvent("error", { message: "A real emulator failure" }));
-    });
-    const messages = await page.evaluate(() => window.__messages);
-    assert(
-      !messages.some((message) =>
-        /ResizeObserver|Wake Lock/.test(String(message?.message || "")),
-      ),
-      "ResizeObserver and Wake Lock noise is ignored",
-    );
-    assert(
-      messages.some((message) => String(message?.message || "").includes("A real emulator failure")),
-      "real emulator errors still reach the parent",
-    );
     await context.close();
   }
 
@@ -518,7 +465,6 @@ try {
       ["#/", ".stat-card"],
       ["#/library", ".game-grid .game-card"],
       ["#/game/1", ".detail-title"],
-      ["#/play/1", "[data-start]"],
     ]) {
       await page.goto(`${base}${route}`);
       await page.waitForSelector(selector, { timeout: 10_000 });
@@ -528,13 +474,34 @@ try {
       }));
       assert(widths.scroll <= widths.inner + 1, `${route} has no horizontal scroll at 360px`);
     }
-    await page.screenshot({ path: join(screenshots, "play-360.png"), fullPage: true });
     await context.close();
   }
 
-  /* Desktop width */
+  /* Desktop width & dynamic showcase grid (max 3 per row, wide 2 per row, cover fits image aspect) */
   {
     const { context, page } = await newPage(browser, { viewport: { width: 1280, height: 900 } });
+    await page.goto(`${base}#/library`);
+    await page.waitForSelector(".game-card.is-wide", { timeout: 10_000 });
+    const showcase = await page.evaluate(() => {
+      const grid = document.querySelector(".game-grid");
+      const portrait = document.querySelector('.game-card[href="#/game/1"] .game-cover img');
+      const wide = document.querySelector('.game-card[href="#/game/3"] .game-cover img');
+      const pRect = portrait.getBoundingClientRect();
+      const wRect = wide.getBoundingClientRect();
+      const gridRect = grid.getBoundingClientRect();
+      return {
+        portraitRatio: pRect.width / pRect.height,
+        wideRatio: wRect.width / wRect.height,
+        portraitWidthFrac: pRect.width / gridRect.width,
+        wideWidthFrac: wRect.width / gridRect.width,
+      };
+    });
+    assert(showcase.portraitRatio < 0.8, "portrait cover fits portrait image size");
+    assert(showcase.wideRatio > 1.8, "wide cover fits wide image size");
+    assert(showcase.portraitWidthFrac > 0.3 && showcase.portraitWidthFrac < 0.35, "portrait showcase is max 3 per row");
+    assert(showcase.wideWidthFrac > 0.45 && showcase.wideWidthFrac < 0.52, "wide showcase is 2 per row");
+    await page.screenshot({ path: join(screenshots, "library-1280.png"), fullPage: true });
+
     await page.goto(base);
     await page.waitForSelector(".stat-card", { timeout: 10_000 });
     const widths = await page.evaluate(() => ({

@@ -43,9 +43,9 @@ export function detailView(ctx) {
       "a",
       { class: "back-link", href: "#/" },
       icon("arrow-left", 17),
-      "Hall",
+      "Home",
     ),
-    el("div", { class: "detail-loading" }, loadingLine("Opening the game sleeve…")),
+    el("div", { class: "detail-loading" }, loadingLine("Loading game details…")),
   );
 
   (async () => {
@@ -166,14 +166,8 @@ function buildHero({ rom, platformSlug, accent, name }) {
         { class: "detail-actions" },
         el(
           "a",
-          { class: "btn btn-keycap btn-mint btn-play", href: `#/play/${encodeURIComponent(rom.id)}` },
-          icon("play", 21),
-          "PLAY",
-        ),
-        el(
-          "a",
           {
-            class: "btn btn-keycap-sm btn-ghost",
+            class: "btn btn-primary",
             href: stockRomUrl(rom.id),
             target: "_blank",
             rel: "noopener noreferrer",
@@ -184,7 +178,7 @@ function buildHero({ rom, platformSlug, accent, name }) {
         rom.has_manual && api.assetUrl(rom.path_manual)
           ? el(
               "a",
-              { class: "btn btn-keycap-sm btn-ghost", href: api.assetUrl(rom.path_manual), target: "_blank", rel: "noopener noreferrer" },
+              { class: "btn btn-ghost", href: api.assetUrl(rom.path_manual), target: "_blank", rel: "noopener noreferrer" },
               "Manual",
               icon("book", 14),
             )
@@ -193,7 +187,7 @@ function buildHero({ rom, platformSlug, accent, name }) {
       el(
         "p",
         { class: "detail-summary" },
-        rom.summary || "No description was scraped for this cartridge yet. The game still runs.",
+        rom.summary || "No description was scraped for this game yet.",
       ),
     ),
   );
@@ -204,9 +198,9 @@ function buildLedgers({ rom, playtime, lastPlayed, saves, states }) {
     "section",
     { class: "detail-ledger", "aria-label": "Game facts" },
     miniLedger("Playtime", formatPlaytime(playtime), `${sessionsText(playtime)}`),
-    miniLedger("Last played", lastPlayed ? timeAgo(lastPlayed) : "Never", lastPlayed ? formatDate(lastPlayed, { withTime: true }) : "Start a session"),
-    miniLedger("Saves", String(saves.length), saves.length ? formatDate(saves[0].updated_at || saves[0].created_at) : "Cloud shelf empty"),
-    miniLedger("States", String(states.length), states.length ? formatDate(states[0].updated_at || states[0].created_at) : "Save states mirror saves"),
+    miniLedger("Last played", lastPlayed ? timeAgo(lastPlayed) : "Never", lastPlayed ? formatDate(lastPlayed, { withTime: true }) : "None yet"),
+    miniLedger("Saves", String(saves.length), saves.length ? formatDate(saves[0].updated_at || saves[0].created_at) : "None on RomM"),
+    miniLedger("States", String(states.length), states.length ? formatDate(states[0].updated_at || states[0].created_at) : "None on RomM"),
   );
 }
 
@@ -221,7 +215,7 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
     el(
       "div",
       { class: "block" },
-      el("h2", { class: "marker marker-sm" }, "The cartridge"),
+      el("h2", { class: "marker marker-sm" }, "Game info"),
       el(
         "div",
         { class: "ledger" },
@@ -259,11 +253,11 @@ function buildTabs({ rom, saves, states, sessions, playtime }) {
     el(
       "div",
       { class: "block" },
-      el("h2", { class: "marker marker-sm" }, "Personal shelf"),
+      el("h2", { class: "marker marker-sm" }, "Personal"),
       el(
         "p",
         { class: "note" },
-        "Ratings, backlog, completion and custom shelves land in v2. For now, manage them in stock RomM — the button below opens the same game there.",
+        "Ratings, backlog, completion and custom collections are managed in stock RomM. The button below opens this game there.",
       ),
       el(
         "div",
@@ -462,7 +456,7 @@ function buildFootlinks(rom) {
 function showError(root, error) {
   clear(root);
   root.append(
-    el("a", { class: "back-link", href: "#/" }, icon("arrow-left", 17), "Hall"),
+    el("a", { class: "back-link", href: "#/" }, icon("arrow-left", 17), "Home"),
     errorState(error, () => ctxRetry()),
   );
 }

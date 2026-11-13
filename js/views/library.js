@@ -95,8 +95,8 @@ export function libraryView(ctx) {
   let queryToken = 0;
   let controller = null;
 
-  const title = el("h1", { class: "marker" }, platformSlug ? "Loading shelf…" : "Library");
-  const subtitle = el("p", { class: "note" }, "Every cartridge in the cupboard.");
+  const title = el("h1", { class: "marker" }, platformSlug ? "Loading platform…" : "Library");
+  const subtitle = el("p", { class: "note" }, "Every game in the library.");
   const headNotes = el("div", { class: "library-head-notes" });
 
   const head = el(
@@ -448,7 +448,7 @@ export function libraryView(ctx) {
       clear(headNotes);
       headNotes.append(
         el("span", { class: "washi-tape" }, `${currentPlatform.rom_count || 0} games`),
-        el("span", { class: "washi-tape mint" }, "Save synced"),
+        el("span", { class: "washi-tape mint" }, currentPlatform.slug || currentPlatform.fs_slug || "Platform"),
       );
     } else {
       const total = platforms.reduce((sum, platform) => sum + (Number(platform.rom_count) || 0), 0);

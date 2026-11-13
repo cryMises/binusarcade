@@ -12,7 +12,6 @@ import { adminView, profileView, scoresView } from "./views/profile.js";
 import { detailView } from "./views/detail.js";
 import { homeView } from "./views/home.js";
 import { libraryView } from "./views/library.js";
-import { playView } from "./views/play.js";
 import { registerView } from "./views/register.js";
 
 const app = document.getElementById("app");
@@ -191,7 +190,7 @@ function renderLogin(message = "") {
     el(
       "p",
       { class: "note" },
-      "A phone-first front end for your RomM library. Sign in with your server account to view library stats, browse platforms, and play in the browser.",
+      "A phone-first front end for your RomM library. Sign in with your server account to view library stats and browse your collection.",
     ),
   );
 
@@ -327,7 +326,7 @@ function mountShell() {
   const netBanner = el(
     "div",
     { class: "net-banner", role: "status", hidden: navigator.onLine },
-    "Offline · cached shell only. Reconnect to load games and sync saves.",
+    "Offline · cached shell only. Reconnect to load your library.",
   );
   window.addEventListener("online", () => {
     netBanner.hidden = true;
@@ -353,7 +352,6 @@ function mountShell() {
     addRoute("/library", libraryView);
     addRoute("/platform/:slug", libraryView);
     addRoute("/game/:id", detailView);
-    addRoute("/play/:id", playView);
     addRoute("/scores", scoresView);
     addRoute("/me", profileView);
     addRoute("/admin", adminView);
@@ -380,7 +378,6 @@ function navLink(key, href, label, iconName) {
 }
 
 function updateChrome({ path, route }) {
-  document.body.classList.toggle("is-playing", path.startsWith("/play"));
   let active = "home";
   if (path.startsWith("/library") || path.startsWith("/platform")) active = "library";
   else if (path.startsWith("/scores")) active = "scores";
@@ -396,12 +393,11 @@ function updateChrome({ path, route }) {
     "/library": "Library",
     "/platform/:slug": "Platform",
     "/game/:id": "Game",
-    "/play/:id": "Play",
     "/scores": "Scores",
     "/me": "Account",
     "/admin": "Admin",
   };
-  if (route !== "/game/:id" && route !== "/play/:id") {
+  if (route !== "/game/:id") {
     const title = titles[route] || "Binus Arcade";
     document.title = title === "Binus Arcade" ? title : `${title} · Binus Arcade`;
   }

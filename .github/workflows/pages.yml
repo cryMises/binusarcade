@@ -27,7 +27,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp -R index.html play-frame.html manifest.json sw.js css js icons _site/
+          cp -R index.html manifest.json sw.js css js icons _site/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
