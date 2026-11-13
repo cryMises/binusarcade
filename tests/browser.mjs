@@ -133,7 +133,7 @@ function send(route, body, status = 200) {
 
 const recorded = [];
 
-async function mockRomm(page) {
+async function mockRomm(page, { failContent = false } = {}) {
   await page.route("https://crymises-music.centralindia.cloudapp.azure.com:8449/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -149,6 +149,15 @@ async function mockRomm(page) {
         status: 200,
         headers: { "content-type": "image/png", ...cors },
         path: join(root, "icons", "icon-192.png"),
+      });
+    }
+
+    if (/^\/roms\/\d+\/content\//.test(path)) {
+      if (failContent) return route.abort("failed");
+      return route.fulfill({
+        status: 200,
+        headers: { "content-type": "application/octet-stream", ...cors },
+        body: Buffer.alloc(32),
       });
     }
 
@@ -224,7 +233,7 @@ async function mockRomm(page) {
 
 const errors = [];
 
-async function newPage(browser, { signedIn = true, viewport = { width: 390, height: 844 } } = {}) {
+async function newPage(browser, { signedIn = true, viewport = { width: 390, height: 844 }, failContent = false } = {}) {
   const context = await browser.newContext({ viewport });
   if (signedIn) {
     await context.addInitScript((value) => {
@@ -239,7 +248,7 @@ async function newPage(browser, { signedIn = true, viewport = { width: 390, heig
     if (/Failed to load resource/.test(message.text())) return;
     errors.push(`console: ${message.text()}`);
   });
-  await mockRomm(page);
+  await mockRomm(page, { failContent });
   return { context, page };
 }
 
@@ -323,6 +332,20 @@ try {
       inner: window.innerWidth,
     }));
     assert(widths.scroll <= widths.inner + 1, "play view has no horizontal scroll at 390px");
+    await context.close();
+  }
+
+  /* A blocked cartridge download explains the failure instead of dumping the
+     browser's raw TypeError. */
+  {
+    const { context, page } = await newPage(browser, { failContent: true });
+    await page.goto(`${base}#/play/1`);
+    await page.waitForSelector("[data-start]", { timeout: 10_000 });
+    await page.click("[data-start]");
+    await page.waitForSelector("[data-play-error] .play-warning", { timeout: 10_000 });
+    const text = await page.locator("[data-play-error]").innerText();
+    assert(text.includes("browser blocked the file request"), "blocked download names the CORS/network cause");
+    assert(!text.includes("Failed to fetch"), "blocked download hides the raw TypeError");
     await context.close();
   }
 

@@ -316,8 +316,8 @@ export function playView(ctx) {
     if (status) status.textContent = text;
   }
 
-  function showPlayError(message) {
-    updateStatus("The emulator couldn't start.");
+  function showPlayError(message, statusText = "The emulator couldn't start.") {
+    updateStatus(statusText);
     const slot = root.querySelector("[data-play-error]");
     if (!slot) return;
     clear(slot);
@@ -413,6 +413,8 @@ export function playView(ctx) {
 
     try {
       const contentUrl = romContentUrl(rom, selectedFile);
+      const errorSlot = root.querySelector("[data-play-error]");
+      if (errorSlot) clear(errorSlot);
       const blob = await downloadBlob(contentUrl, {
         signal: downloadController.signal,
         onProgress: ({ received, total }) => {
@@ -458,8 +460,10 @@ export function playView(ctx) {
       if (isAbortError(error)) {
         progressText.textContent = "Download cancelled.";
       } else {
-        progressText.textContent = error.message || "Couldn't download that cartridge.";
-        toast(error.message || "Couldn't download that cartridge.", { tone: "error", duration: 6000 });
+        const message = error.message || "Couldn't download that cartridge.";
+        progressText.textContent = message;
+        showPlayError(message, "The cartridge didn't download.");
+        toast(message, { tone: "error", duration: 6000 });
       }
       startButton.disabled = false;
       if (cancelButton) cancelButton.hidden = true;

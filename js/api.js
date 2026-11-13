@@ -439,8 +439,26 @@ export async function fetchWithAuth(url, options = {}) {
   return response;
 }
 
+function hostOf(url) {
+  try {
+    return new URL(url).host || "the RomM server";
+  } catch {
+    return "the RomM server";
+  }
+}
+
 export async function downloadBlob(url, { signal, onProgress } = {}) {
-  const response = await fetchWithAuth(url, { signal });
+  let response;
+  try {
+    response = await fetchWithAuth(url, { signal });
+  } catch (error) {
+    if (isAbortError(error) || error instanceof ApiError) throw error;
+    throw new ApiError(
+      `Couldn't start the game download from ${hostOf(url)}. The browser blocked the file request (CORS) or the connection dropped.`,
+      { status: 0, cause: error, retryable: true },
+    );
+  }
+
   const total = Number(response.headers.get("content-length") || 0);
   const type = response.headers.get("content-type") || "application/octet-stream";
 
@@ -462,6 +480,12 @@ export async function downloadBlob(url, { signal, onProgress } = {}) {
       received += value.byteLength;
       onProgress?.({ received, total, done: false });
     }
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new ApiError(
+      `The game download stopped after ${received} bytes. Check your connection and try again.`,
+      { status: 0, cause: error, retryable: true },
+    );
   } finally {
     reader.releaseLock();
   }

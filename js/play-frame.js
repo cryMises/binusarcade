@@ -6,9 +6,20 @@
 const game = document.getElementById("game");
 let booted = false;
 let mode = null;
+let bootStage = "engine";
+let assetFailureNotified = false;
 
 function post(type, payload = {}) {
   window.parent.postMessage({ source: "binusarcade-play", type, ...payload }, window.location.origin);
+}
+
+function hostOf(url) {
+  try {
+    const parsed = new URL(url, window.location.href);
+    return parsed.host || "the asset server";
+  } catch {
+    return "the asset server";
+  }
 }
 
 function showMessage(text) {
@@ -19,16 +30,40 @@ function showMessage(text) {
   game.append(message);
 }
 
-function loadScript(src) {
+function loadScript(src, label = "the emulator engine") {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = src;
     script.async = true;
     script.onload = () => resolve(script);
-    script.onerror = () => reject(new Error("Could not load the emulator engine."));
+    script.onerror = () =>
+      reject(new Error(`Could not load ${label} from ${hostOf(src)}.`));
     document.head.append(script);
   });
 }
+
+/* EJS fetches its core and data files itself. Wrap fetch so a CDN failure
+ * says which host failed instead of only "Failed to fetch". */
+function watchAssetFetches() {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    try {
+      return await nativeFetch(input, init);
+    } catch (error) {
+      if (!assetFailureNotified && error?.name !== "AbortError" && /^https?:/i.test(url)) {
+        assetFailureNotified = true;
+        post("notice", {
+          tone: "error",
+          message: `Emulator asset failed to load from ${hostOf(url)}. Check that the CDN is reachable.`,
+        });
+      }
+      throw error;
+    }
+  };
+}
+
+watchAssetFetches();
 
 function toArrayBuffer(value) {
   if (!value) return null;
@@ -93,6 +128,7 @@ async function bootEjs(config) {
     throw new Error("No emulator core is mapped for this system.");
   }
 
+  bootStage = "engine";
   attachEjsHooks();
   window.EJS_player = "#game";
   window.EJS_core = config.core;
@@ -131,15 +167,17 @@ async function bootEjs(config) {
 
   showMessage("Loading the emulator engine…");
   try {
-    await loadScript(config.loader);
+    await loadScript(config.loader, "the emulator engine");
   } catch (error) {
-    showMessage("The emulator engine couldn't load. Check your connection, or open the game in stock RomM.");
+    showMessage(`${error.message} Open the game in stock RomM if this keeps happening.`);
     throw error;
   }
+  bootStage = "core";
   post("ready");
 }
 
 async function bootRuffle(config) {
+  bootStage = "flash";
   showMessage("Loading the Flash player…");
   window.RufflePlayer = window.RufflePlayer || {};
   window.RufflePlayer.config = {
@@ -149,7 +187,7 @@ async function bootRuffle(config) {
     letterbox: "on",
     contextMenu: "on",
   };
-  await loadScript(config.ruffle);
+  await loadScript(config.ruffle, "the Flash player");
   const ruffle = window.RufflePlayer.newest?.();
   if (!ruffle) throw new Error("Ruffle could not start in this browser.");
 
@@ -250,10 +288,12 @@ function handleMessage(event) {
 
 window.addEventListener("message", handleMessage);
 window.addEventListener("error", (event) => {
-  post("error", { message: event.message || "The emulator crashed." });
+  const message = event.message || "The emulator crashed.";
+  post("error", { message: `Emulator (${bootStage}): ${message}` });
 });
 window.addEventListener("unhandledrejection", (event) => {
-  post("error", { message: event.reason?.message || "The emulator hit an unhandled error." });
+  const message = event.reason?.message || "The emulator hit an unhandled error.";
+  post("error", { message: `Emulator (${bootStage}): ${message}` });
 });
 
 void mode;
