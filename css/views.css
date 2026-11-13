@@ -2108,6 +2108,17 @@ a.stat-card:hover {
   margin-top: 2px;
 }
 
+.register-disabled,
+.register-claim-error {
+  display: grid;
+  gap: 14px;
+}
+
+.register-disabled h2,
+.register-claim-error h2 {
+  margin: 0;
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 380px) {

@@ -6,10 +6,18 @@
 export const ROMM_ORIGIN = "https://crymises-music.centralindia.cloudapp.azure.com:8449";
 export const API_BASE = `${ROMM_ORIGIN}/api`;
 export const APP_PUBLIC_URL = "https://crymises.github.io/binusarcade";
+/* Set to your deployed Cloudflare Worker URL (e.g. "https://binusarcade-signup-relay.<user>.workers.dev")
+ * to share the Signup QR toggle across devices and auto-rotate scanned QRs on Create account. */
+export const SIGNUP_RELAY_URL = "https://binusarcade-signup-relay.samuel314285.workers.dev";
 
 export function signupInviteUrl(token, baseUrl = APP_PUBLIC_URL) {
   const cleanBase = String(baseUrl || APP_PUBLIC_URL).replace(/\/+$/, "");
   return `${cleanBase}/?token=${encodeURIComponent(token)}#/register`;
+}
+
+export function signupClaimUrl(claimId, baseUrl = APP_PUBLIC_URL) {
+  const cleanBase = String(baseUrl || APP_PUBLIC_URL).replace(/\/+$/, "");
+  return `${cleanBase}/?claim=${encodeURIComponent(claimId)}#/register`;
 }
 
 export const APP_NAME = "Binus Arcade";

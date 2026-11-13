@@ -25,7 +25,8 @@ let registerCleanup = null;
 
 function renderSignedOut() {
   const { path } = readHash();
-  const hasInvite = new URLSearchParams(window.location.search).has("token");
+  const params = new URLSearchParams(window.location.search);
+  const hasInvite = params.has("token") || params.has("claim");
   if (path === "/register" || (!window.location.hash && hasInvite)) {
     registerCleanup?.();
     const view = registerView();

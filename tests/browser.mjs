@@ -1,5 +1,5 @@
 import http from "node:http";
-import { createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -319,9 +319,19 @@ async function newPage(
     userRole = "user",
     inviteOptions = null,
     installClock = false,
+    relayUrl = "",
   } = {},
 ) {
   const context = await browser.newContext({ viewport });
+  if (relayUrl !== null) {
+    const configBody = readFileSync(join(root, "js", "config.js"), "utf8").replace(
+      /export const SIGNUP_RELAY_URL = ".*?";/,
+      `export const SIGNUP_RELAY_URL = ${JSON.stringify(relayUrl)};`,
+    );
+    await context.route("**/js/config.js", (route) =>
+      route.fulfill({ status: 200, headers: { "content-type": "text/javascript; charset=utf-8" }, body: configBody }),
+    );
+  }
   if (signedIn) {
     const seeded = {
       ...session,
@@ -479,6 +489,9 @@ try {
     await page.goto(base);
     await page.waitForSelector(".login-register-link", { timeout: 10_000 });
     await page.click(".login-register-link");
+    await page.waitForSelector("[data-register-disabled]", { timeout: 10_000 });
+    assert(await page.isVisible("text=Ask the admin for a signup code"), "register without relay asks admin for signup code");
+    await page.click("[data-enter-token]");
     await page.waitForSelector("#register-username", { timeout: 10_000 });
     assert((await page.inputValue("#register-token")) === "", "register token starts empty without ?token=");
     assert(await page.isVisible("text=Registration is invite-only"), "register without token explains invite requirement");
@@ -612,6 +625,151 @@ try {
       "mint 403 surfaces missing users.write scope plainly",
     );
     await context.close();
+  }
+
+  /* Shared relay flow: disabled Create account -> admin enables -> Create account shows QR -> scan rotates -> old QR 410 -> disable hides */
+  {
+    const relayState = {
+      enabled: false,
+      seq: 0,
+      claimId: null,
+      rommToken: null,
+      used: new Set(),
+      expiresAt: 0,
+    };
+    const mintRelay = () => {
+      relayState.seq += 1;
+      relayState.claimId = `claim-${relayState.seq}`;
+      relayState.rommToken = `relay-romm-${relayState.seq}`;
+      relayState.expiresAt = Date.now() + 3_600_000;
+    };
+    const patchedConfig = readFileSync(join(root, "js", "config.js"), "utf8").replace(
+      /export const SIGNUP_RELAY_URL = ".*?";/,
+      'export const SIGNUP_RELAY_URL = "https://relay.example";',
+    );
+    const attachRelay = async (page) => {
+      await page.context().route("**/js/config.js", (route) =>
+        route.fulfill({ status: 200, headers: { "content-type": "text/javascript; charset=utf-8" }, body: patchedConfig }),
+      );
+      await page.context().route("https://relay.example/**", async (route) => {
+        const req = route.request();
+        const path = new URL(req.url()).pathname;
+        if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+        if (path === "/invite" || (path === "/admin/state" && req.method() === "GET")) {
+          if (!relayState.enabled) return send(route, { enabled: false });
+          if (!relayState.claimId) mintRelay();
+          return send(route, {
+            enabled: true,
+            claimId: relayState.claimId,
+            qrUrl: `https://crymises.github.io/binusarcade/?claim=${relayState.claimId}#/register`,
+            expiresAt: relayState.expiresAt,
+          });
+        }
+        if (path === "/admin/state" && req.method() === "POST") {
+          const body = JSON.parse(req.postData() || "{}");
+          relayState.enabled = Boolean(body.enabled);
+          if (!relayState.enabled) {
+            if (relayState.claimId) relayState.used.add(relayState.claimId);
+            relayState.claimId = null;
+            relayState.rommToken = null;
+            return send(route, { enabled: false });
+          }
+          if (!relayState.claimId) mintRelay();
+          return send(route, {
+            enabled: true,
+            claimId: relayState.claimId,
+            qrUrl: `https://crymises.github.io/binusarcade/?claim=${relayState.claimId}#/register`,
+            expiresAt: relayState.expiresAt,
+          });
+        }
+        if (path === "/claim" && req.method() === "POST") {
+          const body = JSON.parse(req.postData() || "{}");
+          if (!relayState.enabled) return send(route, { detail: "Signup QR is turned off." }, 403);
+          if (!body.claimId || body.claimId !== relayState.claimId) {
+            return send(route, { detail: "This invite QR was already scanned." }, 410);
+          }
+          const tok = relayState.rommToken;
+          relayState.used.add(body.claimId);
+          mintRelay();
+          return send(route, { token: tok, rotated: true });
+        }
+        return send(route, { detail: "Not found" }, 404);
+      });
+    };
+
+    /* 1. Disabled -> Create account shows ask-admin message */
+    const guest1 = await newPage(browser, { signedIn: false, installClock: true });
+    await attachRelay(guest1.page);
+    await guest1.page.goto(base);
+    await guest1.page.waitForSelector(".login-register-link", { timeout: 10_000 });
+    await guest1.page.click(".login-register-link");
+    await guest1.page.waitForSelector("[data-register-disabled]", { timeout: 10_000 });
+    assert(
+      await guest1.page.isVisible("text=Ask the admin for a signup code"),
+      "relay disabled shows ask-admin message on Create account",
+    );
+
+    /* 2. Admin enables Signup QR panel */
+    const adminCtx = await newPage(browser, { userRole: "admin" });
+    await attachRelay(adminCtx.page);
+    await adminCtx.page.goto(`${base}#/me`);
+    await adminCtx.page.waitForSelector("[data-signup-switch]", { timeout: 10_000 });
+    await adminCtx.page.click("[data-signup-switch]");
+    await adminCtx.page.waitForSelector("[data-signup-qr] svg", { timeout: 10_000 });
+    assert(
+      (await adminCtx.page.inputValue("[data-signup-link]")).includes("claim=claim-1"),
+      "admin enabling switch mints claim-1 on relay",
+    );
+
+    /* 3. Guest presses Create account -> sees live QR claim-1 */
+    await guest1.page.click("[data-refresh-signup]");
+    await guest1.page.waitForSelector("[data-public-qr] svg", { timeout: 10_000 });
+    assert(
+      (await guest1.page.getAttribute("[data-public-qr]", "data-claim-id")) === "claim-1",
+      "Create account shows live QR when panel is enabled",
+    );
+
+    /* 4. Friend scans claim-1 -> gets romm token & rotates relay to claim-2 */
+    const scanner = await newPage(browser, { signedIn: false });
+    await attachRelay(scanner.page);
+    await scanner.page.goto(`${base}?claim=claim-1#/register`);
+    await scanner.page.waitForSelector("#register-token", { timeout: 10_000 });
+    assert(
+      (await scanner.page.inputValue("#register-token")) === "relay-romm-1",
+      "scanning ?claim=claim-1 claims single-use RomM token into form",
+    );
+
+    /* 5. Open Create account QR screen updates to claim-2 (never stays on used QR) */
+    await guest1.page.clock.fastForward(4_500);
+    await guest1.page.waitForFunction(
+      () => document.querySelector("[data-public-qr]")?.getAttribute("data-claim-id") === "claim-2",
+      { timeout: 10_000 },
+    );
+    assert(
+      (await guest1.page.getAttribute("[data-public-qr]", "data-claim-id")) === "claim-2",
+      "open Create account QR updates to claim-2 after scan",
+    );
+
+    /* 6. Reusing scanned ?claim=claim-1 fails with already-used message */
+    await scanner.page.goto(`${base}?claim=claim-1#/register`);
+    await scanner.page.waitForSelector("[data-claim-error]", { timeout: 10_000 });
+    assert(
+      await scanner.page.isVisible("text=QR code already used"),
+      "rescanning used QR link rejects instead of showing used token",
+    );
+
+    /* 7. Admin turns panel OFF -> Create account reverts to ask-admin message */
+    await adminCtx.page.click("[data-signup-switch]");
+    await guest1.page.clock.fastForward(4_500);
+    await guest1.page.waitForSelector("[data-register-disabled]", { timeout: 10_000 });
+    assert(
+      await guest1.page.isVisible("text=Ask the admin for a signup code"),
+      "disabling switch hides public QR on Create account",
+    );
+
+    await scanner.context.close();
+    await adminCtx.context.close();
+    await guest1.context.close();
   }
 
   /* 360px narrow width across the primary views */

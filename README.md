@@ -55,15 +55,30 @@ cannot send or read it. Binus Arcade uses RomM's OAuth2 password/refresh grant
 - Non-admin accounts automatically fall back to standard user scopes or read-only scopes
   if `users.*` or write scopes are rejected.
 
-### 3. Invite-only signup QR panel (admin-only)
+### 3. Invite-only signup QR panel (admin-only) + optional public Create account relay
 
 - Visible in Account (`#/me`) and at `#/signup` **only** when `/api/users/me` returns
   `role === "admin"`. Defaults to **OFF**.
-- Calls `POST /api/users/invite-link?role=user&expiration=3600` (single-use player invite)
-  and polls `GET /api/users` every 10 seconds while open to rotate the QR automatically
-  after someone registers or when the 60:00 timer expires.
 - Generates QR codes offline using the vendored MIT library in `js/vendor/qrcode.js`.
 - Invite URL base comes from `APP_PUBLIC_URL` in `js/config.js`.
+- **Cross-device Create account QR (`worker/`):** Deploy the Cloudflare Worker + SQLite
+  Durable Object (`worker/wrangler.toml`, `worker/src/index.js`) on the Cloudflare Free
+  plan (`$0/mo`, 100k req/day) so tapping **Create account** (`#/register`) shows the
+  live QR whenever the admin enables the switch, shows *"Ask the admin for a signup
+  code"* when disabled, and rotates immediately to a fresh QR whenever someone scans it:
+
+```sh
+cd worker
+npx wrangler login
+npx wrangler secret put ROMM_SERVICE_USERNAME
+npx wrangler secret put ROMM_SERVICE_PASSWORD
+npx wrangler deploy
+```
+
+  Then copy the deployed `https://binusarcade-signup-relay.<your-subdomain>.workers.dev`
+  URL into `SIGNUP_RELAY_URL` in `js/config.js`. (If `SIGNUP_RELAY_URL` is left empty,
+  the admin QR panel still works locally via direct RomM `/api/users/invite-link` calls
+  and `/api/users` 10s polling.)
 
 ## Verify
 

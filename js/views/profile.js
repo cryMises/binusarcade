@@ -1,4 +1,4 @@
-import { avatarUrl, getSession, isAdmin, isRoleAdmin } from "../api.js";
+import { api, avatarUrl, getSession, hasSignupRelay, isAdmin, isRoleAdmin } from "../api.js";
 import {
   clear,
   el,
@@ -22,8 +22,11 @@ export function profileView() {
   const roleAdmin = isRoleAdmin(session);
   const root = el("div", { class: "view wrap profile-view" });
   const avatar = avatarUrl(user);
+  const relayEnabled = hasSignupRelay();
   const signupSlot = el("div", { class: "signup-slot", "data-signup-slot": "", hidden: true });
   let signupPanel = null;
+  let userToggled = false;
+  let stateController = null;
 
   function closeSignupPanel() {
     signupPanel?.cleanup?.();
@@ -99,6 +102,28 @@ export function profileView() {
     el("span", { class: "chev" }, "→"),
   );
 
+  const switchNote = el(
+    "span",
+    { class: "profile-switch-note" },
+    relayEnabled ? "Checking status…" : "Off by default · Single-use player invite",
+  );
+
+  function openSignupPanel(initialState = null) {
+    closeSignupPanel();
+    signupPanel = createSignupPanel({
+      showFullScreen: true,
+      initialState,
+      onRelayDisabled: () => {
+        if (signupSwitch) signupSwitch.setAttribute("aria-checked", "false");
+        if (relayEnabled) switchNote.textContent = "Off · Create account asks for admin code";
+        closeSignupPanel();
+      },
+    });
+    signupSlot.append(signupPanel.el);
+    signupSlot.hidden = false;
+    if (relayEnabled) switchNote.textContent = "Enabled · Anyone on Create account sees QR";
+  }
+
   const signupSwitch = roleAdmin
     ? el(
         "button",
@@ -109,17 +134,28 @@ export function profileView() {
           "aria-checked": "false",
           "data-signup-switch": "",
           on: {
-            click: (event) => {
+            click: async (event) => {
               const button = event.currentTarget;
+              userToggled = true;
               const nextOpen = button.getAttribute("aria-checked") !== "true";
               button.setAttribute("aria-checked", nextOpen ? "true" : "false");
               if (nextOpen) {
-                closeSignupPanel();
-                signupPanel = createSignupPanel({ showFullScreen: true });
-                signupSlot.append(signupPanel.el);
-                signupSlot.hidden = false;
+                openSignupPanel();
               } else {
                 closeSignupPanel();
+                if (relayEnabled) {
+                  switchNote.textContent = "Off · Create account asks for admin code";
+                  button.disabled = true;
+                  try {
+                    await api.relaySetEnabled(false);
+                  } catch (error) {
+                    toast(error?.detail || error?.message || "Couldn't disable shared signup QR.");
+                    button.setAttribute("aria-checked", "true");
+                    openSignupPanel();
+                  } finally {
+                    button.disabled = false;
+                  }
+                }
               }
             },
           },
@@ -129,7 +165,7 @@ export function profileView() {
           "span",
           { class: "profile-switch-copy" },
           el("span", { class: "profile-switch-title" }, "Signup QR panel"),
-          el("span", { class: "profile-switch-note" }, "Off by default · Single-use player invite"),
+          switchNote,
         ),
         el(
           "span",
@@ -138,6 +174,26 @@ export function profileView() {
         ),
       )
     : null;
+
+  if (roleAdmin && relayEnabled) {
+    stateController = new AbortController();
+    api
+      .relayAdminState({ signal: stateController.signal })
+      .then((state) => {
+        if (userToggled || stateController?.signal.aborted) return;
+        if (state?.enabled) {
+          signupSwitch?.setAttribute("aria-checked", "true");
+          openSignupPanel(state);
+        } else {
+          signupSwitch?.setAttribute("aria-checked", "false");
+          switchNote.textContent = "Off · Create account asks for admin code";
+        }
+      })
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        switchNote.textContent = "Relay unreachable · Try toggling again";
+      });
+  }
 
   root.append(
     el("div", { class: "eyebrow" }, "Account"),
@@ -217,6 +273,7 @@ export function profileView() {
   return {
     el: root,
     cleanup() {
+      stateController?.abort();
       closeSignupPanel();
     },
   };

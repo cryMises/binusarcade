@@ -11,6 +11,7 @@ import {
   CACHE_TTL,
   REQUEST_TIMEOUT,
   ROMM_ORIGIN,
+  SIGNUP_RELAY_URL,
   STORAGE,
   deviceId,
 } from "./config.js";
@@ -558,6 +559,52 @@ export function avatarUrl(user) {
 /* Endpoints                                                           */
 /* ------------------------------------------------------------------ */
 
+export function hasSignupRelay() {
+  return Boolean(String(SIGNUP_RELAY_URL || "").trim());
+}
+
+async function relayRequest(path, { method = "GET", body, auth = false, signal, timeout = 12_000 } = {}) {
+  const base = String(SIGNUP_RELAY_URL || "").trim().replace(/\/+$/, "");
+  if (!base) {
+    throw new ApiError("Signup relay is not configured.", { status: 0 });
+  }
+  const headers = { Accept: "application/json" };
+  let requestBody;
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    requestBody = JSON.stringify(body);
+  }
+  if (auth) {
+    headers.Authorization = `Bearer ${await accessToken()}`;
+  }
+  const { signal: mergedSignal, done } = mergeSignals(timeout, signal);
+  let response;
+  try {
+    response = await fetch(`${base}${path}`, {
+      method,
+      headers,
+      body: requestBody,
+      signal: mergedSignal,
+      credentials: "omit",
+      mode: "cors",
+      cache: "no-store",
+    });
+  } catch (error) {
+    done();
+    if (isAbortError(error) || error?.name === "TimeoutError") {
+      if (signal?.aborted) throw error;
+      throw new ApiError("Signup relay timed out.", { status: 0, cause: error, retryable: true });
+    }
+    throw new ApiError("Couldn't reach the signup relay.", { status: 0, cause: error, retryable: true });
+  }
+  done();
+  if (!response.ok) {
+    const detail = await parseError(response);
+    throw errorFor(response.status, detail);
+  }
+  return response.json();
+}
+
 export const api = {
   heartbeat() {
     return rawRequest("/heartbeat", { auth: false, timeout: 10_000 });
@@ -724,6 +771,31 @@ export const api = {
       signal,
       timeout: 20_000,
     });
+  },
+
+  relayInvite({ signal } = {}) {
+    return relayRequest("/invite", { signal });
+  },
+
+  relayClaim(claimId, { signal } = {}) {
+    return relayRequest("/claim", { method: "POST", body: { claimId }, signal });
+  },
+
+  relayRegistered(token) {
+    if (!hasSignupRelay() || !token) return Promise.resolve(null);
+    return relayRequest("/registered", { method: "POST", body: { token }, timeout: 6_000 }).catch(() => null);
+  },
+
+  relayAdminState({ signal } = {}) {
+    return relayRequest("/admin/state", { auth: true, signal });
+  },
+
+  relaySetEnabled(enabled, { signal } = {}) {
+    return relayRequest("/admin/state", { method: "POST", body: { enabled: Boolean(enabled) }, auth: true, signal });
+  },
+
+  relayRotate({ signal } = {}) {
+    return relayRequest("/admin/rotate", { method: "POST", auth: true, signal });
   },
 };
 

@@ -1,0 +1,17 @@
+name = "binusarcade-signup-relay"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+ROMM_ORIGIN = "https://crymises-music.centralindia.cloudapp.azure.com:8449"
+APP_PUBLIC_URL = "https://crymises.github.io/binusarcade"
+ALLOWED_ORIGINS = "https://crymises.github.io,https://binusarcade.pages.dev,http://localhost:8080,http://127.0.0.1:8080"
+MAX_DAILY_MINTS = "500"
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "SignupRelayDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SignupRelayDO"]
