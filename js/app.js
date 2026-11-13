@@ -6,20 +6,47 @@ import {
   toast,
 } from "./components.js";
 import { APP_VERSION, FEATURES, ROMM_ORIGIN } from "./config.js";
-import { addRoute, startRouter } from "./router.js";
+import { addRoute, readHash, startRouter } from "./router.js";
 import { initTheme } from "./theme.js";
 import { adminView, profileView, scoresView } from "./views/profile.js";
 import { detailView } from "./views/detail.js";
 import { homeView } from "./views/home.js";
 import { libraryView } from "./views/library.js";
 import { playView } from "./views/play.js";
+import { registerView } from "./views/register.js";
 
 const app = document.getElementById("app");
 let routerStarted = false;
+let registerCleanup = null;
 
 /* ------------------------------------------------------------------ */
 /* Boot                                                               */
 /* ------------------------------------------------------------------ */
+
+function renderSignedOut() {
+  const { path } = readHash();
+  const hasInvite = new URLSearchParams(window.location.search).has("token");
+  if (path === "/register" || (!window.location.hash && hasInvite)) {
+    registerCleanup?.();
+    const view = registerView();
+    registerCleanup = view.cleanup || null;
+    app.replaceChildren(view.el);
+    document.title = "Create account · Binus Arcade";
+    return;
+  }
+
+  registerCleanup?.();
+  registerCleanup = null;
+  renderLogin();
+}
+
+function onSignedOutHash() {
+  if (hasSession()) {
+    window.removeEventListener("hashchange", onSignedOutHash);
+    return;
+  }
+  renderSignedOut();
+}
 
 async function boot() {
   initTheme();
@@ -27,7 +54,8 @@ async function boot() {
   registerServiceWorker();
 
   if (!hasSession()) {
-    renderLogin();
+    renderSignedOut();
+    window.addEventListener("hashchange", onSignedOutHash);
     return;
   }
 
@@ -38,12 +66,12 @@ async function boot() {
     restoreSession({ background: true }).catch((error) => {
       if (error?.status === 401 || error?.status === 403) return;
       /* Network failures keep the cached shell usable. */
-      toast("Couldn't refresh the session. The shelf may be stale.", { tone: "warn" });
+      toast("Couldn't refresh the session. Cached data may be stale.", { tone: "warn" });
     });
     return;
   }
 
-  renderBoot("Checking your player card…");
+  renderBoot("Checking your session…");
   try {
     await restoreSession();
     mountShell();
@@ -60,10 +88,9 @@ function renderBoot(note) {
       el(
         "div",
         { class: "splash-card" },
-        el("span", { class: "tape-pin", "aria-hidden": "true" }),
-        el("div", { class: "splash-cart", "aria-hidden": "true" }),
+        el("div", { class: "splash-cart", "aria-hidden": "true" }, "B"),
         el("h1", { class: "marker" }, "Binus Arcade"),
-        el("p", { class: "note splash-note" }, note || "Blowing on the cartridge…"),
+        el("p", { class: "note splash-note" }, note || "Connecting to your library…"),
       ),
     ),
   );
@@ -103,9 +130,9 @@ function renderLogin(message = "") {
 
   const submit = el(
     "button",
-    { class: "btn btn-keycap btn-mint", type: "submit" },
+    { class: "btn btn-primary", type: "submit" },
     icon("play", 18),
-    "Open the arcade",
+    "Sign in",
   );
 
   const form = el(
@@ -135,24 +162,22 @@ function renderLogin(message = "") {
     }
 
     submit.disabled = true;
-    const label = submit.querySelector("span");
-    void label;
     submit.replaceChildren(el("span", { class: "spinner", "aria-hidden": "true" }), "Signing in…");
     form.querySelector(".login-error")?.remove();
 
     try {
       await login(username.value.trim(), password.value);
       password.value = "";
-      mountShell();
+      if (!document.querySelector(".topbar")) mountShell();
     } catch (error) {
       submit.disabled = false;
-      submit.replaceChildren(icon("play", 18), "Open the arcade");
+      submit.replaceChildren(icon("play", 18), "Sign in");
       const message =
         error?.status === 0
           ? "Can't reach the RomM server. Ask the server owner to allow this origin in ROMM_CORS_ALLOWED_ORIGINS, then try again."
           : error?.status === 401
             ? "That username and password didn't match."
-            : error?.detail || error?.message || "The arcade didn't open. Try again.";
+            : error?.detail || error?.message || "Couldn't sign in. Try again.";
       const box = el("div", { class: "login-error", role: "alert" }, icon("alert", 18), el("span", {}, message));
       form.insertBefore(box, submit);
     }
@@ -161,19 +186,12 @@ function renderLogin(message = "") {
   const poster = el(
     "div",
     { class: "login-poster" },
-    el("div", { class: "eyebrow" }, "Your library, on the couch"),
-    el("h1", { class: "hero-title" }, el("span", { class: "marker-line" }, "Binus Arcade")),
+    el("div", { class: "eyebrow" }, "Self-hosted game library"),
+    el("h1", { class: "hero-title" }, "Binus Arcade"),
     el(
       "p",
       { class: "note" },
-      "A paper-and-cartridge front end for the RomM shelf. Sign in with the same account you use on the server — browse 185 tapes, then play in the browser.",
-    ),
-    el(
-      "div",
-      { class: "login-tapes" },
-      el("span", { class: "washi-tape" }, "Phone first"),
-      el("span", { class: "washi-tape mint" }, "Save synced"),
-      el("span", { class: "washi-tape blue" }, "No install"),
+      "A phone-first front end for your RomM library. Sign in with your server account to view library stats, browse platforms, and play in the browser.",
     ),
   );
 
@@ -188,15 +206,20 @@ function renderLogin(message = "") {
         el(
           "section",
           { class: "login-card" },
-          el("span", { class: "tape-pin", "aria-hidden": "true" }),
-          el("div", { class: "eyebrow" }, "Player check-in"),
-          el("h2", {}, "Back to the Hall"),
-          el("p", { class: "note" }, "Sign in with your RomM account. The password never touches storage."),
+          el("div", { class: "eyebrow" }, "RomM account"),
+          el("h2", {}, "Sign in"),
+          el("p", { class: "note" }, "Sign in with your RomM account. Your password never touches storage."),
           form,
           el(
             "p",
+            { class: "login-register-row" },
+            "Have an invite? ",
+            el("a", { class: "login-register-link", href: "#/register" }, "Create account"),
+          ),
+          el(
+            "p",
             { class: "login-note" },
-            "This is a self-hosted arcade. The server must allow this site in ",
+            "The RomM server must allow this site in ",
             el("code", {}, "ROMM_CORS_ALLOWED_ORIGINS"),
             ". ",
             el(
@@ -238,6 +261,13 @@ function flashAndReload(message) {
 /* ------------------------------------------------------------------ */
 
 function mountShell() {
+  window.removeEventListener("hashchange", onSignedOutHash);
+  registerCleanup?.();
+  registerCleanup = null;
+  if (readHash().path === "/register") {
+    history.replaceState(null, "", `${window.location.pathname}${window.location.search}#/`);
+  }
+
   const session = getSession();
   const user = session?.user || {};
   const avatar = avatarUrl(user);
@@ -264,7 +294,7 @@ function mountShell() {
 
   const avatarLink = el(
     "a",
-    { class: "avatar", href: "#/me", "aria-label": `Player card for ${userLabel(user)}` },
+    { class: "avatar", href: "#/me", "aria-label": `Account for ${userLabel(user)}` },
     avatar
       ? el("img", { src: avatar, alt: "", loading: "lazy" })
       : userInitials(user),
@@ -285,7 +315,7 @@ function mountShell() {
       el(
         "nav",
         { class: "topbar-nav", "aria-label": "Main" },
-        navLink("hall", "#/", "Hall"),
+        navLink("home", "#/", "Home"),
         navLink("library", "#/library", "Library"),
         navLink("scores", "#/scores", "Scores"),
         navLink("me", "#/me", "Me"),
@@ -297,7 +327,7 @@ function mountShell() {
   const netBanner = el(
     "div",
     { class: "net-banner", role: "status", hidden: navigator.onLine },
-    "Offline · showing the last shelf. Reconnect to load games and sync saves.",
+    "Offline · cached shell only. Reconnect to load games and sync saves.",
   );
   window.addEventListener("online", () => {
     netBanner.hidden = true;
@@ -310,7 +340,7 @@ function mountShell() {
   const bottomNav = el(
     "nav",
     { class: "bottom-nav", "aria-label": "Bottom" },
-    navLink("hall", "#/", "Hall", "home"),
+    navLink("home", "#/", "Home", "home"),
     navLink("library", "#/library", "Library", "grid"),
     navLink("scores", "#/scores", "Scores", "trophy"),
     navLink("me", "#/me", "Me", "user"),
@@ -327,6 +357,10 @@ function mountShell() {
     addRoute("/scores", scoresView);
     addRoute("/me", profileView);
     addRoute("/admin", adminView);
+    addRoute("/register", (ctx) => {
+      ctx.navigate("/", { replace: true });
+      return el("div");
+    });
     routerStarted = true;
     startRouter(main, updateChrome);
   } else {
@@ -347,7 +381,7 @@ function navLink(key, href, label, iconName) {
 
 function updateChrome({ path, route }) {
   document.body.classList.toggle("is-playing", path.startsWith("/play"));
-  let active = "hall";
+  let active = "home";
   if (path.startsWith("/library") || path.startsWith("/platform")) active = "library";
   else if (path.startsWith("/scores")) active = "scores";
   else if (path.startsWith("/me") || path.startsWith("/admin")) active = "me";
@@ -360,11 +394,11 @@ function updateChrome({ path, route }) {
   const titles = {
     "/": "Binus Arcade",
     "/library": "Library",
-    "/platform/:slug": "System shelf",
-    "/game/:id": "Game sleeve",
+    "/platform/:slug": "Platform",
+    "/game/:id": "Game",
     "/play/:id": "Play",
     "/scores": "Scores",
-    "/me": "Player card",
+    "/me": "Account",
     "/admin": "Admin",
   };
   if (route !== "/game/:id" && route !== "/play/:id") {
@@ -387,7 +421,11 @@ function bindGlobalEvents() {
 
   window.addEventListener("binusarcade:auth", (event) => {
     if (event.detail === null) {
-      flashAndReload("Signed out. See you at the next high score.");
+      flashAndReload("Signed out.");
+      return;
+    }
+    if (!document.querySelector(".topbar")) {
+      mountShell();
     }
   });
 

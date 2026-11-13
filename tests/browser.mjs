@@ -162,13 +162,59 @@ async function mockRomm(page, { failContent = false } = {}) {
     }
 
     if (path === "/token") {
-      tokenScopes = new URLSearchParams(request.postData() || "").get("scope") || "";
+      const params = new URLSearchParams(request.postData() || "");
+      tokenScopes = params.get("scope") || "";
+      if (params.get("username") === "pending") {
+        return send(route, { detail: "Insufficient scope" }, 403);
+      }
       return send(route, session.tokens);
+    }
+    if (path === "/users/register") {
+      const payload = JSON.parse(request.postData() || "{}");
+      if (payload.username === "badinvite") {
+        return send(route, { detail: [{ msg: "Invite token expired" }] }, 422);
+      }
+      return send(route, { id: 2, username: payload.username, email: payload.email, enabled: true }, 201);
     }
     if (path === "/users/me") return send(route, session.user);
     if (path === "/permissions/me") return send(route, session.permissions);
     if (path === "/logout") return send(route, {});
     if (path === "/platforms") return send(route, platforms);
+    if (path === "/stats") {
+      return send(route, {
+        PLATFORMS: 6,
+        ROMS: 12,
+        SAVES: 2,
+        STATES: 3,
+        SCREENSHOTS: 6,
+        TOTAL_FILESIZE_BYTES: 150_073_344,
+        METADATA_COVERAGE: {
+          igdb: [
+            { source: "Matched", matched: 10 },
+            { source: "Unmatched", matched: 2 },
+          ],
+        },
+        REGION_BREAKDOWN: {
+          regions: [
+            { region: "USA", count: 8 },
+            { region: "Japan", count: 4 },
+          ],
+        },
+      });
+    }
+    if (path === "/activity") {
+      return send(route, [
+        {
+          user_id: 1,
+          username: "pongo",
+          rom_id: 1,
+          rom_name: "Mario Kart: Super Circuit",
+          platform_slug: "gba",
+          platform_name: "Game Boy Advance",
+          started_at: new Date(Date.now() - 600_000).toISOString(),
+        },
+      ]);
+    }
     if (path === "/roms/filters") {
       return send(route, {
         genres: ["Racing", "RPG", "Action", "Adventure", "Puzzle"],
@@ -198,7 +244,14 @@ async function mockRomm(page, { failContent = false } = {}) {
         },
       ]);
     }
-    if (path === "/saves" || path === "/states") return send(route, []);
+    if (path === "/saves") {
+      if (url.searchParams.get("rom_id")) return send(route, []);
+      return send(route, [
+        { id: 1, rom_id: 1, slot: "Slot 1", file_name: "mk.sav", file_size_bytes: 32768 },
+        { id: 2, rom_id: 2, slot: "Default", file_name: "plat.sav", file_size_bytes: 65536 },
+      ]);
+    }
+    if (path === "/states") return send(route, []);
     if (path === "/saves/summary") return send(route, { total_count: 0, slots: [] });
 
     if (path === "/roms") {
@@ -259,20 +312,25 @@ function assert(condition, message) {
 
 const browser = await chromium.launch();
 try {
-  /* Signed-in home */
+  /* Signed-in home (stats-only, no play affordances) */
   {
     const { context, page } = await newPage(browser);
     await page.goto(base);
-    await page.waitForSelector(".continue-ticket", { timeout: 10_000 });
-    assert(await page.isVisible("text=Continue playing"), "home shows Continue playing");
-    assert(await page.isVisible("text=Mario Kart: Super Circuit"), "home continue ticket uses live data");
-    assert((await page.locator(".shelf .cart").count()) === 6, "systems shelf renders from /platforms");
-    assert((await page.locator(".game-card").count()) === 6, "recently added grid renders");
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
+    assert(await page.isVisible("text=Library stats"), "home shows Library stats");
+    assert((await page.locator(".stat-card").count()) === 6, "home renders 6 stat cards from /stats");
+    assert((await page.locator(".system-row").count()) === 6, "systems breakdown renders from /platforms");
+    assert(await page.isVisible("text=2 saves across 2 slots"), "home summarizes saves from /saves");
+    assert(await page.isVisible("text=pongo started Mario Kart: Super Circuit"), "home renders activity feed");
+    assert((await page.locator(".game-card").count()) === 6, "recently added grid renders detail cards");
+    assert((await page.locator('a[href^="#/play/"]').count()) === 0, "home has zero links to play view");
+    assert((await page.locator('button:has-text("Play"), a:has-text("Play")').count()) === 0, "home has no play buttons");
     await page.screenshot({ path: join(screenshots, "home-390-light.png"), fullPage: true });
 
     await page.click("[data-theme-toggle]");
     const theme = await page.getAttribute("html", "data-theme");
     assert(theme === "dark", "theme toggle switches to dark");
+    await page.waitForTimeout(200);
     await page.screenshot({ path: join(screenshots, "home-390-dark.png"), fullPage: true });
 
     const widths = await page.evaluate(() => ({
@@ -300,7 +358,7 @@ try {
     await page.fill("#library-search", "metroid");
     await page.waitForTimeout(550);
     assert(page.url().includes("q=metroid"), "search is written to the hash");
-    assert(await page.isVisible("text=No tape by that name"), "combined filters show the empty state");
+    assert(await page.isVisible("text=No games matched"), "combined filters show the empty state");
 
     await page.screenshot({ path: join(screenshots, "library-390-empty.png"), fullPage: true });
     await context.close();
@@ -387,11 +445,11 @@ try {
     const { context, page } = await newPage(browser, { signedIn: false });
     await page.goto(base);
     await page.waitForSelector("#login-username");
-    assert(await page.isVisible("text=Back to the Hall"), "signed-out visitors get the login gate");
+    assert(await page.isVisible("text=Create account"), "login links to invite registration");
     await page.fill("#login-username", "pongo");
     await page.fill("#login-password", "supersecret");
     await page.click('button[type="submit"]');
-    await page.waitForSelector(".continue-ticket", { timeout: 10_000 });
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
     const stored = await page.evaluate(() => ({
       session: sessionStorage.getItem("binusarcade.session") || "",
       local: JSON.stringify(localStorage),
@@ -407,11 +465,57 @@ try {
     await context.close();
   }
 
-  /* 360px narrow width across the four primary views */
+  /* Invite registration flow: token prefill, 422 verbatim, 403 activation wait, 201 auto-login */
+  {
+    const { context, page } = await newPage(browser, { signedIn: false });
+    await page.goto(`${base}?token=invite-123#/register`);
+    await page.waitForSelector("#register-username");
+    assert((await page.inputValue("#register-token")) === "invite-123", "register prefills ?token= from URL");
+    await page.screenshot({ path: join(screenshots, "register-390.png"), fullPage: true });
+
+    await page.fill("#register-username", "badinvite");
+    await page.fill("#register-email", "bad@example.com");
+    await page.fill("#register-password", "pass12345");
+    await page.fill("#register-confirm", "pass12345");
+    await page.click('button[type="submit"]');
+    await page.waitForSelector(".login-error", { timeout: 10_000 });
+    assert(await page.isVisible("text=Invite token expired"), "register shows 422 server validation verbatim");
+
+    await page.fill("#register-username", "pending");
+    await page.click('button[type="submit"]');
+    await page.waitForSelector(".register-waiting", { timeout: 10_000 });
+    assert(await page.isVisible("text=Waiting for activation"), "register handles 403 deny-by-default activation");
+    await context.close();
+  }
+
+  /* Register without ?token= via Login link + valid 201 auto-login with ?token= */
+  {
+    const { context, page } = await newPage(browser, { signedIn: false });
+    await page.goto(base);
+    await page.waitForSelector(".login-register-link", { timeout: 10_000 });
+    await page.click(".login-register-link");
+    await page.waitForSelector("#register-username", { timeout: 10_000 });
+    assert((await page.inputValue("#register-token")) === "", "register token starts empty without ?token=");
+    assert(await page.isVisible("text=Registration is invite-only"), "register without token explains invite requirement");
+
+    await page.goto(`${base}?token=invite-456`);
+    await page.waitForSelector("#register-username", { timeout: 10_000 });
+    assert((await page.inputValue("#register-token")) === "invite-456", "?token= opens register automatically");
+    await page.fill("#register-username", "newplayer");
+    await page.fill("#register-email", "new@example.com");
+    await page.fill("#register-password", "pass12345");
+    await page.fill("#register-confirm", "pass12345");
+    await page.click('button[type="submit"]');
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
+    assert(await page.isVisible("text=Library stats"), "register auto-logins and lands on Home");
+    await context.close();
+  }
+
+  /* 360px narrow width across the primary views */
   {
     const { context, page } = await newPage(browser, { viewport: { width: 360, height: 800 } });
     for (const [route, selector] of [
-      ["#/", ".continue-ticket"],
+      ["#/", ".stat-card"],
       ["#/library", ".game-grid .game-card"],
       ["#/game/1", ".detail-title"],
       ["#/play/1", "[data-start]"],
@@ -432,12 +536,13 @@ try {
   {
     const { context, page } = await newPage(browser, { viewport: { width: 1280, height: 900 } });
     await page.goto(base);
-    await page.waitForSelector(".continue-ticket", { timeout: 10_000 });
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
     const widths = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       inner: window.innerWidth,
     }));
     assert(widths.scroll <= widths.inner + 1, `home has no horizontal scroll at 1280px (${widths.scroll}/${widths.inner})`);
+    assert(!(await page.isVisible(".bottom-nav")), "bottom nav is hidden on desktop");
     await page.screenshot({ path: join(screenshots, "home-1280.png"), fullPage: true });
     await context.close();
   }

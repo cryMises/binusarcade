@@ -555,6 +555,15 @@ export const api = {
     return rawRequest("/heartbeat", { auth: false, timeout: 10_000 });
   },
 
+  register({ username, email, password, token }) {
+    return rawRequest("/users/register", {
+      method: "POST",
+      body: { username, email, password, token },
+      auth: false,
+      timeout: 20_000,
+    });
+  },
+
   me() {
     return rawRequest("/users/me");
   },
