@@ -18,6 +18,7 @@ import { libraryView } from "./views/library.js";
 import { shelfView } from "./views/shelf.js";
 import { registerView } from "./views/register.js";
 import { signupView } from "./views/signup.js";
+import { shortPlatformLabel } from "./config.js";
 import { fetchTrialSettings, resolveTrial, trialView } from "./views/trial.js";
 
 const app = document.getElementById("app");
@@ -50,18 +51,11 @@ async function loadPublicState({ force = false } = {}) {
   return { settings: publicSettings, trial: trialState };
 }
 
-function startTrialRouteIfNeeded() {
-  if (trialRouteStarted) return;
-  addRoute("/trial", (ctx) => trialView(ctx));
-  trialRouteStarted = true;
-}
-
 async function renderSignedOut() {
   const renderId = ++signedOutRender;
   const { path } = readHash();
   const params = new URLSearchParams(window.location.search);
   const hasInvite = params.has("token") || params.has("claim");
-  startTrialRouteIfNeeded();
 
   if (path === "/trial") {
     registerCleanup?.();
@@ -73,13 +67,10 @@ async function renderSignedOut() {
       if (location.hash === "#/trial") history.replaceState(null, "", "#/");
       return;
     }
-    if (!routerStarted) {
-      routerStarted = true;
-      startRouter(app, () => {});
-    } else {
-      startRouter(app, () => {});
-      rerender();
-    }
+    const view = trialView({ path, query: readHash().query }, trial);
+    registerCleanup = view?.cleanup || null;
+    app.replaceChildren(view?.el || view);
+    document.title = `${t("Try one game")} · Binus Arcade`;
     return;
   }
 
@@ -359,7 +350,7 @@ function renderLogin(message = "", opts = {}) {
             "div",
             { class: "login-trial-copy", style: { minWidth: 0 } },
             el("strong", { style: { display: "block" } }, trial.rom.name || t("Trial game")),
-            el("span", { class: "note" }, trial.rom.platform_display_name || trial.rom.platform_slug || ""),
+            el("span", { class: "note" }, shortPlatformLabel(trial.rom)),
           ),
         ),
         el(

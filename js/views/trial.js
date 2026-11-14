@@ -88,7 +88,7 @@ function romFileChoices(rom) {
   return files;
 }
 
-export function trialView(ctx) {
+export function trialView(ctx, initial = null) {
   const root = el("div", { class: "view wrap trial-view", "data-trial-view": "" });
   let cleanup = () => {};
   let rom = null;
@@ -306,20 +306,28 @@ export function trialView(ctx) {
 
   async function init() {
     try {
-      const settings = await fetchTrialSettings({ signal: ctx?.signal });
-      const resolved = await resolveTrial(settings, { signal: ctx?.signal });
-      if (!resolved?.rom) {
-        window.location.hash = "#/";
-        return;
+      if (initial?.rom?.id) {
+        rom = initial.rom;
+      } else {
+        const settings = await fetchTrialSettings({ signal: ctx?.signal });
+        const resolved = await resolveTrial(settings, { signal: ctx?.signal });
+        if (!resolved?.rom) {
+          if (!rom) window.location.hash = "#/";
+          return;
+        }
+        rom = resolved.rom;
       }
-      rom = resolved.rom;
       if (!isSupportedPlatform(platformSlugOf(rom), rom.platform_slug, rom.platform_fs_slug)) {
-        window.location.hash = "#/";
+        if (!initial?.rom) window.location.hash = "#/";
         return;
       }
       renderDetail();
     } catch (error) {
       if (isAbortError(error)) return;
+      if (rom) {
+        renderDetail();
+        return;
+      }
       clear(root);
       root.append(buildTopBar(), errorState(error, init));
     }

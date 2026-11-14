@@ -509,7 +509,7 @@ export function adminView() {
     if (!q) return;
     results.replaceChildren(loadingLine(t("Searching…")));
     try {
-      const data = await api.roms({ search: q, limit: 12, with_total: true });
+      const data = await api.roms({ search_term: q, limit: 12, with_total: true });
       if (disposed) return;
       const items = data.items || [];
       if (!items.length) {
