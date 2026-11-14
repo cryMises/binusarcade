@@ -964,7 +964,7 @@ try {
       await page.isVisible('button[data-lang="id"][aria-pressed="true"]'),
       "Indonesian pill is selected by default",
     );
-    assert(await page.isVisible("text=Masuk"), "login screen renders Indonesian copy");
+    assert(await page.isVisible("text=Login"), "login screen renders Indonesian copy");
     assert(await page.isVisible("text=Buat akun"), "create-account link is Indonesian");
 
     await page.click('button[data-lang="en"]');
@@ -981,7 +981,7 @@ try {
     assert((await page.getAttribute("html", "lang")) === "en", "saved language survives reload");
 
     await page.click('button[data-lang="id"]');
-    await page.waitForSelector("text=Masuk", { timeout: 5000 });
+    await page.waitForSelector("text=Login", { timeout: 5000 });
     await context.close();
   }
 

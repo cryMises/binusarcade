@@ -3,9 +3,9 @@
 
 export default {
   /* Create account — form */
-  "Back to sign in": "Kembali ke halaman masuk",
+  "Back to sign in": "Kembali ke halaman login",
   "Paste your invite token": "Tempel token undanganmu",
-  Username: "Nama pengguna",
+  Username: "Username",
   Email: "Email",
   "Confirm password": "Konfirmasi password",
   "Invite token": "Token undangan",
@@ -26,15 +26,15 @@ export default {
     "Tidak bisa menghubungi server RomM. Periksa koneksimu lalu coba lagi.",
   "Couldn't create the account. Try again.": "Gagal membuat akun. Coba lagi.",
   "Account created, but the server couldn't be reached to sign in. Try signing in from the login screen.":
-    "Akun dibuat, tapi server tidak bisa dihubungi untuk masuk. Coba masuk dari halaman login.",
-  "Account created, but sign-in failed.": "Akun dibuat, tapi gagal masuk.",
+    "Akun dibuat, tapi server tidak bisa dihubungi untuk login. Coba login dari halaman login.",
+  "Account created, but sign-in failed.": "Akun dibuat, tapi gagal login.",
 
   /* Create account — waiting for activation */
   "Account created · Binus Arcade": "Akun dibuat · Binus Arcade",
   "Account created": "Akun dibuat",
   "Waiting for activation": "Menunggu aktivasi",
   "Your RomM account exists, but it doesn't have access yet. Ask the RomM admin to grant it in the server's user settings, then sign in.":
-    "Akun RomM kamu sudah ada, tapi belum punya akses. Minta admin RomM memberi akses di pengaturan pengguna server, lalu masuk.",
+    "Akun RomM kamu sudah ada, tapi belum punya akses. Minta admin RomM memberi akses di pengaturan pengguna server, lalu login.",
   "New accounts start with no permissions until the admin promotes them.":
     "Akun baru belum punya izin sampai admin memberinya.",
 
@@ -46,7 +46,7 @@ export default {
   "Create your account": "Buat akunmu",
   "Account details": "Detail akun",
   "Uses the same RomM account you'll sign in with. The password never touches storage.":
-    "Memakai akun RomM yang sama untuk masuk. Password tidak pernah disimpan.",
+    "Memakai akun RomM yang sama untuk login. Password tidak pernah disimpan.",
 
   /* Create account — disabled and claim states */
   "Invite required": "Butuh undangan",
@@ -57,7 +57,7 @@ export default {
   "I have a signup code": "Saya punya kode pendaftaran",
   "Invite QR": "QR undangan",
   "Checking invite QR…": "Memeriksa QR undangan…",
-  "Claiming your single-use invite token.": "Mengambil token undangan sekali pakaimu.",
+  "Claiming your single-use invite token.": "Mengambil token undangan sekali pakai.",
   "No invite token was returned. Ask the admin for a signup code.":
     "Tidak ada token undangan yang dikembalikan. Minta kode pendaftaran ke admin.",
   "The signup QR panel is turned off. Ask the admin for a signup code.":
@@ -95,7 +95,7 @@ export default {
   "Copy link": "Salin link",
   "Fresh single-use invite ready.": "Undangan sekali pakai baru siap.",
   "New invite": "Undangan baru",
-  "Full screen": "Layar penuh",
+  "Full screen": "Fullscreen",
   "Single-use player invite (role: user). While enabled, anyone who taps Create account sees this QR. Every scan or claim rotates immediately to a new unused QR.":
     "Undangan pemain sekali pakai (role: user). Selama aktif, siapa pun yang ketuk Buat akun melihat QR ini. Setiap scan atau klaim langsung berganti ke QR baru yang belum dipakai.",
   "Single-use player invite (role: user). Anyone who scans this QR or opens the link can create a player account. Refreshes automatically when a new user registers or when the 60:00 timer runs out.":
@@ -112,14 +112,14 @@ export default {
   "Couldn't check relay status — keeping current QR and retrying soon.":
     "Gagal memeriksa status relay — QR saat ini tetap dipakai dan dicoba lagi nanti.",
   "Invite ready, but this session lacks users.read scope for automatic refresh. Use New invite manually.":
-    "Undangan siap, tapi sesi ini tidak punya scope users.read untuk refresh otomatis. Pakai Undangan baru secara manual.",
+    "Undangan siap, tapi sesi ini tidak punya scope users.read untuk refresh otomatis. Pakai tombol Undangan baru secara manual.",
   "New account registered — refreshed invite QR.":
     "Akun baru terdaftar — QR undangan diperbarui.",
   "Auto-refresh paused because users.read scope is missing. Current QR still works.":
-    "Refresh otomatis dijeda karena scope users.read tidak ada. QR saat ini masih berfungsi.",
+    "Refresh otomatis di-pause karena scope users.read tidak ada. QR saat ini masih berfungsi.",
   "Couldn't check for new signups — keeping the current QR and retrying soon.":
     "Gagal memeriksa pendaftar baru — QR saat ini tetap dipakai dan dicoba lagi nanti.",
-  "Minting…": "Membuat…",
+  "Minting…": "Membuat undangan…",
   "Signup relay returned no active invite.":
     "Relay pendaftaran tidak mengembalikan undangan aktif.",
   "RomM returned an empty invite token.": "RomM mengembalikan token undangan kosong.",
@@ -127,7 +127,7 @@ export default {
     "Siap di-scan. Memantau pendaftar baru setiap 10 detik.",
   "Invite creation blocked.": "Pembuatan undangan diblokir.",
   "Your session is missing the users.write scope required to mint invite links. Sign out and sign back in as an admin, or check your RomM role.":
-    "Sesimu tidak punya scope users.write yang dibutuhkan untuk membuat link undangan. Keluar lalu masuk lagi sebagai admin, atau periksa peran RomM-mu.",
+    "Sesimu tidak punya scope users.write yang dibutuhkan untuk membuat link undangan. Logout lalu login lagi sebagai admin, atau periksa peran RomM-mu.",
   "Couldn't mint a new invite.": "Gagal membuat undangan baru.",
   "Couldn't reach RomM to create an invite link.":
     "Tidak bisa menghubungi RomM untuk membuat link undangan.",

@@ -500,7 +500,7 @@ const checks = [
   ["Users API method", typeof api.api.users === "function"],
   ["Strict admin role check", api.isRoleAdmin({ user: { role: "admin" } }) && !api.isRoleAdmin({ user: { role: "user" }, permissions: { is_admin: true } })],
   ["i18n defaults to Indonesian", i18n.DEFAULT_LOCALE === "id" && i18n.locale() === "id"],
-  ["i18n translates known strings", i18n.t("Home") === "Beranda" && i18n.t("Sign in") === "Masuk"],
+  ["i18n translates known strings", i18n.t("Home") === "Beranda" && i18n.t("Sign in") === "Login"],
   ["i18n falls back to the English source", i18n.t("Not a real key zzz") === "Not a real key zzz"],
   ["i18n interpolates params", i18n.t("Hi {name}, {n} left", { name: "Ada", n: 3 }) === "Hi Ada, 3 left"],
   ["i18n plurals pick the right form", i18n.tn(1, "1 save", "{n} saves", { n: 1 }) !== i18n.tn(2, "1 save", "{n} saves", { n: 2 })],

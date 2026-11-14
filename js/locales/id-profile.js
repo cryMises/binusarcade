@@ -5,24 +5,24 @@ export default {
   Account: "Akun",
   Admin: "Admin",
   Player: "Pemain",
-  "Last login {date}": "Terakhir masuk {date}",
+  "Last login {date}": "Terakhir login {date}",
 
   /* Settings */
   Settings: "Pengaturan",
   "Switch theme": "Ganti tema",
   Language: "Bahasa",
   "Applies to every screen.": "Berlaku di semua layar.",
-  "Stay signed in": "Tetap masuk",
-  "Keeps you signed in after you close the browser.": "Kamu tetap masuk setelah browser ditutup.",
-  "Staying signed in on this device.": "Tetap masuk di perangkat ini.",
-  "You'll be signed out when you close the browser.": "Kamu akan keluar saat browser ditutup.",
-  "Install on this phone": "Pasang di ponsel ini",
+  "Stay signed in": "Tetap login",
+  "Keeps you signed in after you close the browser.": "Kamu tetap login setelah browser ditutup.",
+  "Staying signed in on this device.": "Tetap login di perangkat ini.",
+  "You'll be signed out when you close the browser.": "Kamu akan logout saat browser ditutup.",
+  "Install on this phone": "Install di ponsel ini",
   "Install from your browser menu: Add to Home screen.":
-    "Pasang dari menu browser: Tambahkan ke layar utama.",
+    "Install dari menu browser: Tambahkan ke layar utama.",
   "Binus Arcade added to your home screen.": "Binus Arcade ditambahkan ke layar utama.",
   "RomM account": "Akun RomM",
   "Admin console": "Konsol admin",
-  "Sign out": "Keluar",
+  "Sign out": "Logout",
 
   /* Signup QR panel */
   "Signup QR panel": "Panel QR Pendaftaran",
@@ -31,7 +31,7 @@ export default {
     "Mati secara default · Undangan pemain sekali pakai",
   "Off · Create account asks for admin code": "Mati · Buat akun minta kode admin",
   "Enabled · Anyone on Create account sees QR": "Aktif · Siapa pun di Buat akun melihat QR",
-  "Relay unreachable · Try toggling again": "Relay tidak terjangkau · Coba toggle lagi",
+  "Relay unreachable · Try toggling again": "Relay tidak bisa dihubungi · Coba toggle lagi",
   "Couldn't disable shared signup QR.": "Gagal mematikan QR pendaftaran bersama.",
 
   /* Personal shelf */
@@ -53,7 +53,7 @@ export default {
     "Rak kamu akan terisi saat kamu main dan mencatat game di RomM.",
 
   /* Scores */
-  "Coming in v3": "Hadir di v3",
+  "Coming in v3": "Segera di v3",
   "High scores": "Papan skor",
   "Leaderboards and player stats are coming in a later update. Your playtime is already tracked in RomM.":
     "Leaderboard dan statistik pemain menyusul di update berikutnya. Waktu main kamu sudah tercatat di RomM.",
@@ -63,7 +63,7 @@ export default {
   /* Admin */
   "This area is for admins.": "Area ini khusus admin.",
   "The v1 app deliberately doesn't clone RomM's admin screens. Server administration stays in stock RomM, where permissions are enforced.":
-    "Aplikasi v1 sengaja tidak meniru layar admin RomM. Administrasi server tetap di RomM asli, tempat izinnya dijaga.",
+    "Aplikasi v1 sengaja tidak meniru layar admin RomM. Admin server tetap di RomM asli, karena di sana izin dicek.",
   "Open RomM admin": "Buka admin RomM",
   "Back to Me": "Kembali ke Saya",
   "Members only": "Khusus anggota",
@@ -72,36 +72,36 @@ export default {
     "Rak ini untuk admin RomM. Akunmu tidak punya peran admin, jadi pintunya tetap tertutup.",
 
   /* Trial & registration settings (admin) */
-  "Trial and registration": "Percobaan dan pendaftaran",
+  "Trial and registration": "Trial dan pendaftaran",
   "Control the login page trial and self-registration. The trial game is served through the relay Worker; RomM stays closed to anonymous access.":
-    "Atur game percobaan dan pendaftaran mandiri di halaman masuk. Game percobaan disajikan lewat Worker relay; RomM tetap tertutup untuk akses anonim.",
+    "Atur game trial dan pendaftaran mandiri di halaman login. Game trial disajikan lewat Worker relay; RomM tetap tertutup untuk akses anonim.",
   "Loading settings…": "Memuat pengaturan…",
   "Settings loaded.": "Pengaturan dimuat.",
   "Couldn't load settings.": "Gagal memuat pengaturan.",
-  "Show trial game on login": "Tampilkan game percobaan di halaman masuk",
+  "Show trial game on login": "Tampilkan game trial di halaman login",
   "Allow self-registration": "Izinkan pendaftaran mandiri",
-  "Trial game": "Game percobaan",
-  "No trial game selected": "Belum ada game percobaan dipilih",
+  "Trial game": "Game trial",
+  "No trial game selected": "Belum ada game trial yang dipilih",
   "No trial game selected. Pick a game below and save.":
-    "Belum ada game percobaan dipilih. Pilih game di bawah lalu simpan.",
+    "Belum ada game trial yang dipilih. Pilih game di bawah lalu simpan.",
   "Game ID: {id}": "ID game: {id}",
   "Selected game details will load after save/reload if accessible.":
-    "Detail game terpilih akan dimuat setelah disimpan/muat ulang jika dapat diakses.",
-  "Search games to set as trial": "Cari game untuk dijadikan percobaan",
+    "Detail game terpilih akan dimuat setelah disimpan/reload jika dapat diakses.",
+  "Search games to set as trial": "Cari game untuk dijadikan trial",
   "Search": "Cari",
   "Searching…": "Mencari…",
   "No games found.": "Game tidak ditemukan.",
   "Search failed.": "Pencarian gagal.",
-  "Trial game selected.": "Game percobaan dipilih.",
+  "Trial game selected.": "Game trial dipilih.",
   Clear: "Hapus",
   "Save settings": "Simpan pengaturan",
   "Pick a trial game before enabling trial.":
-    "Pilih game percobaan sebelum mengaktifkan percobaan.",
+    "Pilih game trial sebelum mengaktifkan trial.",
   "Settings saved.": "Pengaturan disimpan.",
   "Couldn't save settings.": "Gagal menyimpan pengaturan.",
   "Saved. Login page will use these settings.":
-    "Tersimpan. Halaman masuk akan memakai pengaturan ini.",
+    "Tersimpan. Halaman login akan memakai pengaturan ini.",
   "Stock RomM": "RomM asli",
   "Server administration stays in stock RomM, where permissions are enforced.":
-    "Administrasi server tetap di RomM asli, tempat izin dijaga.",
+    "Admin server tetap di RomM asli, karena di sana izin dicek.",
 };

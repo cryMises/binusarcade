@@ -17,7 +17,7 @@ export default {
   "Recently added": "Baru ditambahkan",
   "Name A–Z": "Nama A–Z",
   "Recently updated": "Baru diperbarui",
-  "Recently played": "Baru dimainkan",
+  "Recently played": "Terakhir dimainkan",
   "Largest file": "File terbesar",
 
   /* Filters */
@@ -39,7 +39,7 @@ export default {
   "In progress": "Sedang dimainkan",
   Finished: "Selesai",
   "100%": "100%",
-  Retired: "Disimpan",
+  Retired: "Retired",
   "Never playing": "Belum dimainkan",
   "Last played": "Terakhir dimainkan",
   Favorites: "Favorit",
@@ -60,7 +60,7 @@ export default {
     "Tidak ada yang cocok dengan “{q}”. Coba kata kunci lebih pendek atau hapus filter.",
   "Try a different filter. If RomM has games here, they will show up after the next scan.":
     "Coba filter lain. Kalau RomM punya game di sini, nanti muncul setelah scan berikutnya.",
-  "Reset filters": "Atur ulang filter",
+  "Reset filters": "Reset filter",
 
   /* Shelf not found */
   "Shelf not found": "Rak tidak ditemukan",

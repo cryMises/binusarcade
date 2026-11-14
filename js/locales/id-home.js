@@ -28,13 +28,13 @@ export default {
   "Save states": "Save state",
   "state files": "file state",
   Screenshots: "Screenshot",
-  captures: "tangkapan",
+  captures: "capture",
   "Library size": "Ukuran library",
   "on disk": "di disk",
 
   /* Stats extras */
   "Metadata coverage": "Cakupan metadata",
-  Regions: "Wilayah",
+  Regions: "Region",
   Unknown: "Tidak diketahui",
 
   /* Empty states */
@@ -45,14 +45,14 @@ export default {
   "No activity yet": "Belum ada aktivitas",
   "When someone starts a game, it shows up here.": "Saat seseorang mulai main, aktivitasnya muncul di sini.",
   "No saves yet": "Belum ada save",
-  "Saves synced from the emulator will appear here.": "Save yang tersinkron dari emulator muncul di sini.",
+  "Saves synced from the emulator will appear here.": "Save yang di-sync dari emulator muncul di sini.",
   "No games yet": "Belum ada game",
-  "When RomM scans a game, it will show up here.": "Saat RomM memindai game, game itu muncul di sini.",
+  "When RomM scans a game, it will show up here.": "Saat RomM scan game, game itu muncul di sini.",
   "Open library": "Buka library",
 
   /* Activity lines */
   "Someone": "Seseorang",
-  "a game": "sebuah game",
+  "a game": "game",
   "{who} started {game}": "{who} mulai main {game}",
   "{who} started {game} on {platform}": "{who} mulai main {game} di {platform}",
   "{name}: {n} games": "{name}: {n} game",
