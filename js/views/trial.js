@@ -33,10 +33,11 @@ import { t } from "../i18n.js";
 const PLAY_MESSAGE = "binusarcade-play";
 const HOST_MESSAGE = "binusarcade-host";
 
-export async function fetchTrialSettings({ signal } = {}) {
+export async function fetchTrialSettings({ signal, strict = false } = {}) {
   try {
     return await api.settings({ signal });
-  } catch {
+  } catch (error) {
+    if (strict) throw error;
     return { trialGameId: null, trialEnabled: false, registrationEnabled: true };
   }
 }
@@ -117,6 +118,29 @@ export function trialView(ctx, initial = null) {
     iframeWindow?.postMessage({ source: HOST_MESSAGE, type, ...payload }, window.location.origin);
   }
 
+  /* Console-only diagnostics: helps tell a compositor/iframe problem from a
+   * core/render problem without adding visible UI. */
+  function logPlayerInfo() {
+    try {
+      const doc = iframeWindow?.document;
+      const canvas = doc?.querySelector("canvas.ejs_canvas") || doc?.querySelector("#game canvas");
+      if (!canvas) {
+        console.info("[trial] no emulator canvas yet");
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+      console.info("[trial] player canvas", {
+        buffer: `${canvas.width}x${canvas.height}`,
+        css: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+        display: getComputedStyle(canvas).display,
+        webglLost: gl?.isContextLost?.() ?? null,
+      });
+    } catch (error) {
+      console.info("[trial] player check skipped", error?.name);
+    }
+  }
+
   function updateStatus(text) {
     const status = root.querySelector("[data-trial-status]");
     if (status) status.textContent = text;
@@ -145,7 +169,10 @@ export function trialView(ctx, initial = null) {
       const data = event.data;
       if (!data || data.source !== PLAY_MESSAGE) return;
       if (data.type === "ready") updateStatus(t("Engine ready. Start the game."));
-      if (data.type === "started") updateStatus(t("Playing. Trial mode — progress won't be saved."));
+      if (data.type === "started") {
+        updateStatus(t("Playing. Trial mode — progress won't be saved."));
+        logPlayerInfo();
+      }
       if (data.type === "state-request") {
         toast(t("Trial mode — progress won't be saved."), { tone: "warn" });
         sendToFrame("resume");

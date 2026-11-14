@@ -2385,8 +2385,7 @@ a.stat-card:hover {
   margin: 0 0 18px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--background) 88%, transparent);
-  backdrop-filter: blur(14px) saturate(1.15);
+  background: var(--background);
 }
 
 .trial-topbar .back-link {
@@ -2624,7 +2623,6 @@ a.stat-card:hover {
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-2);
-  animation: trialRise 500ms 70ms var(--ease) both;
 }
 
 .trial-stage-head {
@@ -2706,8 +2704,6 @@ a.stat-card:hover {
 .trial-stage-host {
   position: relative;
   height: clamp(280px, 64vw, 460px);
-  overflow: hidden;
-  isolation: isolate;
   background: #08070b;
 }
 
@@ -2786,7 +2782,6 @@ a.stat-card:hover {
 .play-stage {
   width: 100%;
   height: 100%;
-  animation: trialFade 280ms var(--ease) both;
 }
 
 .play-stage iframe,

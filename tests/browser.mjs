@@ -1032,6 +1032,31 @@ try {
       signedIn: false,
       lang: "en",
       relayUrl: null,
+      relaySettings: { trialGameId: 1, trialEnabled: true, registrationEnabled: true },
+    });
+    let failures = 1;
+    await page.route("**/settings", async (route) => {
+      if (failures > 0 && route.request().method() === "GET") {
+        failures -= 1;
+        return route.fulfill({
+          status: 503,
+          headers: cors,
+          body: JSON.stringify({ detail: "Relay down" }),
+        });
+      }
+      return route.fallback();
+    });
+    await page.goto(`${base}#/trial`);
+    await page.waitForSelector("[data-trial-view]", { timeout: 15_000 });
+    assert(await page.isVisible("text=Mario Kart: Super Circuit"), "trial recovers after a transient settings failure");
+    await context.close();
+  }
+
+  {
+    const { context, page } = await newPage(browser, {
+      signedIn: false,
+      lang: "en",
+      relayUrl: null,
       relaySettings: { trialGameId: null, trialEnabled: false, registrationEnabled: false },
     });
     await page.goto(`${base}#/register`);

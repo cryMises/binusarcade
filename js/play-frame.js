@@ -98,9 +98,19 @@ function attachEjsHooks() {
           ...(window.EJS_emulator.settings || {}),
           "save-state-location": "browser",
         };
+        const canvas = window.EJS_emulator.canvas;
+        if (canvas && !canvas.dataset.lossWatched) {
+          canvas.dataset.lossWatched = "1";
+          canvas.addEventListener("webglcontextlost", (event) => {
+            event.preventDefault();
+            post("error", {
+              message: "The emulator lost its graphics context. Reload the trial to continue.",
+            });
+          });
+        }
       }
     } catch {
-      /* settings are a nicety */
+      /* settings and diagnostics are a nicety */
     }
     post("started");
   };

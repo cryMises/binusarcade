@@ -44,7 +44,9 @@ let signedOutRender = 0;
 
 async function loadPublicState({ force = false } = {}) {
   if (!force && publicSettings) return { settings: publicSettings, trial: trialState };
-  const settings = await fetchTrialSettings();
+  /* Don't cache a transient relay failure as "no trial": logins would keep
+   * hiding the trial until a full reload. */
+  const settings = await fetchTrialSettings({ strict: true });
   publicSettings = settings;
   trialState = await resolveTrial(settings).catch(() => null);
   document.documentElement.dataset.publicSettings = "ready";
