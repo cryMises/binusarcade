@@ -1,16 +1,18 @@
 import {
   api,
   avatarUrl,
+  coverUrl,
+  downloadBlob,
   getSession,
   hasSignupRelay,
   isAdmin,
   isPersistentSession,
   isRoleAdmin,
+  relayUrl,
   setPersistentSession,
 } from "../api.js";
 import {
   clear,
-  cover,
   el,
   icon,
   cartridgeMini,
@@ -318,6 +320,7 @@ export function adminView() {
   let signupPanel = null;
   let signupToggled = false;
   let signupStateController = null;
+  const blobUrls = new Set();
 
   function closeSignupPanel() {
     signupPanel?.cleanup?.();
@@ -405,6 +408,33 @@ export function adminView() {
     return `${rom.name || rom.title || t("Game")} · ${platform}`;
   }
 
+  function trialCoverImg(rom, className = "trial-cover-sm") {
+    const url = coverUrl(rom, "small");
+    const img = el("img", { class: className, alt: "" });
+    if (!url) {
+      img.hidden = true;
+      return img;
+    }
+    const relay = relayUrl("");
+    const needsAuth = url.startsWith("http") && (!relay || !url.startsWith(relay));
+    if (!needsAuth) {
+      img.src = url;
+      return img;
+    }
+    void (async () => {
+      try {
+        const blob = await downloadBlob(url);
+        if (disposed) return;
+        const objectUrl = URL.createObjectURL(blob);
+        blobUrls.add(objectUrl);
+        img.src = objectUrl;
+      } catch {
+        if (!disposed) img.hidden = true;
+      }
+    })();
+    return img;
+  }
+
   function renderCurrent() {
     if (!selectedGame && !settings.trialGameId) {
       currentGame.replaceChildren(
@@ -423,7 +453,7 @@ export function adminView() {
       el(
         "div",
         { class: "trial-pick trial-current" },
-        el("img", { class: "trial-cover-sm", src: cover(rom), alt: "" }),
+        trialCoverImg(rom),
         el(
           "div",
           { class: "trial-pick-copy" },
@@ -456,6 +486,16 @@ export function adminView() {
         selectedGame = await api.rom(settings.trialGameId);
       } catch {
         selectedGame = null;
+      }
+      if (selectedGame && !selectedGame.coverUrl) {
+        try {
+          const meta = await api.trialMeta();
+          if (meta?.id === settings.trialGameId && meta?.coverUrl) {
+            selectedGame = { ...selectedGame, coverUrl: meta.coverUrl };
+          }
+        } catch {
+          /* authed blob fallback handles cover when proxy meta isn't available */
+        }
       }
     } else {
       selectedGame = null;
@@ -492,7 +532,7 @@ export function adminView() {
                 },
               },
             },
-            el("img", { class: "trial-cover-sm", src: cover(rom), alt: "" }),
+            trialCoverImg(rom),
             el(
               "span",
               { class: "trial-result-copy" },
@@ -650,6 +690,8 @@ export function adminView() {
       disposed = true;
       signupStateController?.abort();
       closeSignupPanel();
+      for (const url of blobUrls) URL.revokeObjectURL(url);
+      blobUrls.clear();
     },
   };
 }
