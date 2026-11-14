@@ -645,9 +645,8 @@ try {
       inviteOptions,
       installClock: true,
     });
-    const beforeOpen = recorded.length;
     await page.goto(`${base}#/me`);
-    await page.waitForSelector("[data-signup-switch]", { timeout: 10_000 });
+    await page.waitForSelector("[data-persist-switch]", { timeout: 10_000 });
     assert(
       (await page.getAttribute("[data-persist-switch]", "aria-checked")) === "true",
       "stay signed in row defaults to on",
@@ -662,6 +661,10 @@ try {
       (await page.evaluate(() => localStorage.getItem("binusarcade.remember"))) === "1",
       "settings switch turns stay signed in back on",
     );
+
+    const beforeOpen = recorded.length;
+    await page.goto(`${base}#/admin`);
+    await page.waitForSelector("[data-signup-switch]", { timeout: 10_000 });
     assert(
       (await page.getAttribute("[data-signup-switch]", "aria-checked")) === "false",
       "signup QR switch defaults to OFF",
@@ -823,7 +826,7 @@ try {
     /* 2. Admin enables Signup QR panel */
     const adminCtx = await newPage(browser, { userRole: "admin" });
     await attachRelay(adminCtx.page);
-    await adminCtx.page.goto(`${base}#/me`);
+    await adminCtx.page.goto(`${base}#/admin`);
     await adminCtx.page.waitForSelector("[data-signup-switch]", { timeout: 10_000 });
     await adminCtx.page.click("[data-signup-switch]");
     await adminCtx.page.waitForSelector("[data-signup-qr] svg", { timeout: 10_000 });

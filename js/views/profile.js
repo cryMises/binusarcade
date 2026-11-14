@@ -34,21 +34,8 @@ export function profileView() {
   const session = getSession();
   const user = session?.user || {};
   const admin = isAdmin(session);
-  const roleAdmin = isRoleAdmin(session);
   const root = el("div", { class: "view wrap profile-view" });
   const avatar = avatarUrl(user);
-  const relayEnabled = hasSignupRelay();
-  const signupSlot = el("div", { class: "signup-slot", "data-signup-slot": "", hidden: true });
-  let signupPanel = null;
-  let userToggled = false;
-  let stateController = null;
-
-  function closeSignupPanel() {
-    signupPanel?.cleanup?.();
-    signupPanel = null;
-    clear(signupSlot);
-    signupSlot.hidden = true;
-  }
 
   const avatarNode = el(
     "span",
@@ -169,99 +156,6 @@ export function profileView() {
     el("span", { class: "chev" }, "→"),
   );
 
-  const switchNote = el(
-    "span",
-    { class: "profile-switch-note" },
-    relayEnabled ? t("Checking status…") : t("Off by default · Single-use player invite"),
-  );
-
-  function openSignupPanel(initialState = null) {
-    closeSignupPanel();
-    signupPanel = createSignupPanel({
-      showFullScreen: true,
-      initialState,
-      onRelayDisabled: () => {
-        if (signupSwitch) signupSwitch.setAttribute("aria-checked", "false");
-        if (relayEnabled) switchNote.textContent = t("Off · Create account asks for admin code");
-        closeSignupPanel();
-      },
-    });
-    signupSlot.append(signupPanel.el);
-    signupSlot.hidden = false;
-    if (relayEnabled) switchNote.textContent = t("Enabled · Anyone on Create account sees QR");
-  }
-
-  const signupSwitch = roleAdmin
-    ? el(
-        "button",
-        {
-          class: "profile-row profile-switch",
-          type: "button",
-          role: "switch",
-          "aria-checked": "false",
-          "data-signup-switch": "",
-          on: {
-            click: async (event) => {
-              const button = event.currentTarget;
-              userToggled = true;
-              const nextOpen = button.getAttribute("aria-checked") !== "true";
-              button.setAttribute("aria-checked", nextOpen ? "true" : "false");
-              if (nextOpen) {
-                openSignupPanel();
-              } else {
-                closeSignupPanel();
-                if (relayEnabled) {
-                  switchNote.textContent = t("Off · Create account asks for admin code");
-                  button.disabled = true;
-                  try {
-                    await api.relaySetEnabled(false);
-                  } catch (error) {
-                    toast(error?.detail || error?.message || t("Couldn't disable shared signup QR."));
-                    button.setAttribute("aria-checked", "true");
-                    openSignupPanel();
-                  } finally {
-                    button.disabled = false;
-                  }
-                }
-              }
-            },
-          },
-        },
-        el("span", { class: "profile-row-icon" }, icon("qr", 18)),
-        el(
-          "span",
-          { class: "profile-switch-copy" },
-          el("span", { class: "profile-switch-title" }, t("Signup QR panel")),
-          switchNote,
-        ),
-        el(
-          "span",
-          { class: "switch-track", "aria-hidden": "true" },
-          el("span", { class: "switch-thumb" }),
-        ),
-      )
-    : null;
-
-  if (roleAdmin && relayEnabled) {
-    stateController = new AbortController();
-    api
-      .relayAdminState({ signal: stateController.signal })
-      .then((state) => {
-        if (userToggled || stateController?.signal.aborted) return;
-        if (state?.enabled) {
-          signupSwitch?.setAttribute("aria-checked", "true");
-          openSignupPanel(state);
-        } else {
-          signupSwitch?.setAttribute("aria-checked", "false");
-          switchNote.textContent = t("Off · Create account asks for admin code");
-        }
-      })
-      .catch((error) => {
-        if (error?.name === "AbortError") return;
-        switchNote.textContent = t("Relay unreachable · Try toggling again");
-      });
-  }
-
   root.append(
     el("div", { class: "eyebrow" }, t("Account")),
     el(
@@ -301,16 +195,14 @@ export function profileView() {
         admin
           ? el(
               "a",
-              { class: "profile-row", href: stockAdminUrl(), target: "_blank", rel: "noopener noreferrer" },
+              { class: "profile-row", href: "#/admin" },
               el("span", { class: "profile-row-icon" }, icon("settings", 18)),
               t("Admin console"),
-              el("span", { class: "chev" }, "↗"),
+              el("span", { class: "chev" }, "→"),
             )
           : null,
-        roleAdmin ? signupSwitch : null,
         logoutButton,
       ),
-      roleAdmin ? signupSlot : null,
     ),
     el(
       "section",
@@ -340,13 +232,7 @@ export function profileView() {
     siteFooter(),
   );
 
-  return {
-    el: root,
-    cleanup() {
-      stateController?.abort();
-      closeSignupPanel();
-    },
-  };
+  return root;
 }
 
 export function scoresView() {
@@ -380,6 +266,7 @@ export function scoresView() {
 export function adminView() {
   const session = getSession();
   const admin = isAdmin(session);
+  const roleAdmin = isRoleAdmin(session);
   const root = el("div", { class: "view wrap" });
 
   if (!admin) {
@@ -407,6 +294,7 @@ export function adminView() {
     return root;
   }
 
+  /* Trial and registration settings */
   const status = el("div", { class: "admin-settings-status" }, loadingLine(t("Loading settings…")));
   const currentGame = el("div", { class: "admin-trial-current" });
   const searchInput = el("input", {
@@ -423,6 +311,93 @@ export function adminView() {
   let selectedGame = null;
   let settings = { trialGameId: null, trialEnabled: false, registrationEnabled: true };
   let disposed = false;
+
+  /* Signup QR (relay) */
+  const relayEnabled = hasSignupRelay();
+  const signupSlot = el("div", { class: "signup-slot", "data-signup-slot": "", hidden: true });
+  let signupPanel = null;
+  let signupToggled = false;
+  let signupStateController = null;
+
+  function closeSignupPanel() {
+    signupPanel?.cleanup?.();
+    signupPanel = null;
+    clear(signupSlot);
+    signupSlot.hidden = true;
+  }
+
+  const signupSwitchNote = el(
+    "span",
+    { class: "profile-switch-note" },
+    relayEnabled ? t("Checking status…") : t("Off by default · Single-use player invite"),
+  );
+
+  function openSignupPanel(initialState = null) {
+    closeSignupPanel();
+    signupPanel = createSignupPanel({
+      showFullScreen: true,
+      initialState,
+      onRelayDisabled: () => {
+        if (signupSwitch) signupSwitch.setAttribute("aria-checked", "false");
+        if (relayEnabled) signupSwitchNote.textContent = t("Off · Create account asks for admin code");
+        closeSignupPanel();
+      },
+    });
+    signupSlot.append(signupPanel.el);
+    signupSlot.hidden = false;
+    if (relayEnabled) signupSwitchNote.textContent = t("Enabled · Anyone on Create account sees QR");
+  }
+
+  const signupSwitch = roleAdmin
+    ? el(
+        "button",
+        {
+          class: "profile-row profile-switch",
+          type: "button",
+          role: "switch",
+          "aria-checked": "false",
+          "data-signup-switch": "",
+          on: {
+            click: async (event) => {
+              const button = event.currentTarget;
+              signupToggled = true;
+              const nextOpen = button.getAttribute("aria-checked") !== "true";
+              button.setAttribute("aria-checked", nextOpen ? "true" : "false");
+              if (nextOpen) {
+                openSignupPanel();
+              } else {
+                closeSignupPanel();
+                if (relayEnabled) {
+                  signupSwitchNote.textContent = t("Off · Create account asks for admin code");
+                  button.disabled = true;
+                  try {
+                    await api.relaySetEnabled(false);
+                  } catch (error) {
+                    toast(error?.detail || error?.message || t("Couldn't disable shared signup QR."));
+                    button.setAttribute("aria-checked", "true");
+                    openSignupPanel();
+                  } finally {
+                    button.disabled = false;
+                  }
+                }
+              }
+            },
+          },
+        },
+        el("span", { class: "profile-row-icon" }, icon("qr", 18)),
+        el(
+          "span",
+          { class: "profile-switch-copy" },
+          el("span", { class: "profile-switch-title" }, t("Signup QR panel")),
+          signupSwitchNote,
+        ),
+        el(
+          "span",
+          { class: "switch-track", "aria-hidden": "true" },
+          el("span", { class: "switch-thumb" }),
+        ),
+      )
+    : null;
 
   function gameLabel(rom) {
     if (!rom) return t("No trial game selected");
@@ -565,6 +540,26 @@ export function adminView() {
     }
   });
 
+  if (roleAdmin && relayEnabled) {
+    signupStateController = new AbortController();
+    api
+      .relayAdminState({ signal: signupStateController.signal })
+      .then((state) => {
+        if (signupToggled || signupStateController?.signal.aborted) return;
+        if (state?.enabled) {
+          signupSwitch?.setAttribute("aria-checked", "true");
+          openSignupPanel(state);
+        } else {
+          signupSwitch?.setAttribute("aria-checked", "false");
+          signupSwitchNote.textContent = t("Off · Create account asks for admin code");
+        }
+      })
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        signupSwitchNote.textContent = t("Relay unreachable · Try toggling again");
+      });
+  }
+
   root.append(
     el(
       "section",
@@ -604,6 +599,21 @@ export function adminView() {
       results,
       el("div", { class: "stub-actions" }, saveBtn),
     ),
+    roleAdmin
+      ? el(
+          "section",
+          { class: "block" },
+          el("div", { class: "eyebrow" }, t("Signup")),
+          el("h2", { class: "marker marker-sm" }, t("Signup QR panel")),
+          el(
+            "p",
+            { class: "note" },
+            t("Share a single-use QR so players can create their own account."),
+          ),
+          el("div", { class: "profile-list" }, signupSwitch),
+          signupSlot,
+        )
+      : null,
     el(
       "section",
       { class: "block stub-card" },
@@ -638,6 +648,8 @@ export function adminView() {
     el: root,
     cleanup() {
       disposed = true;
+      signupStateController?.abort();
+      closeSignupPanel();
     },
   };
 }
