@@ -202,7 +202,7 @@ export function stockRomUrl(id) {
 }
 
 export function stockAdminUrl() {
-  return `${ROMM_ORIGIN}/admin`;
+  return `${ROMM_ORIGIN}/administration`;
 }
 
 export function stockAccountUrl() {
