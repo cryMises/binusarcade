@@ -114,7 +114,8 @@ async function renderSignedOut() {
     renderLogin();
     loadPublicState()
       .then(({ settings, trial }) => {
-        if (hasSession()) return;
+        if (renderId !== signedOutRender || hasSession()) return;
+        if (readHash().path !== "/") return;
         renderLogin("", { settings, trial });
       })
       .catch(() => {

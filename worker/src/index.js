@@ -19,6 +19,20 @@ const DEFAULT_SETTINGS = {
   registrationEnabled: true,
 };
 
+function trialSecret(env) {
+  return String(env?.TRIAL_API_TOKEN || "").trim();
+}
+
+function trialBase(request) {
+  const url = new URL(request.url);
+  return `${url.origin}`;
+}
+
+function normalizeTrialId(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+}
+
 function parseAllowedOrigins(raw) {
   return new Set(
     String(raw || "")
@@ -611,6 +625,149 @@ async function handleSettings(request, env) {
   return json({ detail: "Method not allowed." }, 405, request, env);
 }
 
+function trialCorsResponse(response, request, env) {
+  const headers = new Headers(response.headers);
+  const cors = corsHeaders(request, env);
+  for (const [k, v] of Object.entries(cors)) headers.set(k, v);
+  /* Streams must remain streams; avoid buffering. */
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function rommTrialFetch(env, path, { method = "GET", headers = {} } = {}) {
+  const token = trialSecret(env);
+  const romm = String(env?.ROMM_ORIGIN || "").replace(/\/+$/, "");
+  return fetch(`${romm}${path}`, {
+    method,
+    headers: {
+      ...headers,
+      Authorization: `Bearer ${token}`,
+      Accept: headers.Accept || "application/json",
+    },
+  });
+}
+
+async function fetchTrialRom(env, trialGameId) {
+  const res = await rommTrialFetch(env, `/api/roms/${encodeURIComponent(trialGameId)}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    const detail = text.slice(0, 200) || `RomM returned ${res.status}.`;
+    const err = new Error(detail);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+function pickCoverPath(rom, env) {
+  const origin = String(env?.ROMM_ORIGIN || "").replace(/\/+$/, "");
+  const asPath = (value) => {
+    if (!value) return null;
+    const raw = String(value);
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const u = new URL(raw);
+        if (origin && `${u.origin}` === origin) return `${u.pathname}${u.search}`;
+      } catch {
+        /* ignore */
+      }
+      return null;
+    }
+    return raw.startsWith("/") ? raw : `/${raw.replace(/^\/+/, "")}`;
+  };
+  return asPath(rom?.url_cover) || asPath(rom?.path_cover_large) || asPath(rom?.path_cover_small);
+}
+
+async function handleTrial(request, env) {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  if (!path.startsWith("/trial")) return null;
+
+  /* Fixed endpoint set, read-only. No other RomM paths proxied. */
+  const allowed = path === "/trial/meta" || path === "/trial/cover" || path === "/trial/content";
+  if (!allowed) {
+    return json({ detail: "Not found." }, 403, request, env);
+  }
+  if (request.method !== "GET") {
+    return json({ detail: "Method not allowed." }, 403, request, env);
+  }
+
+  if (!trialSecret(env)) {
+    return json({ detail: "Trial is unavailable." }, 503, request, env);
+  }
+
+  const settings = await readSettings(env);
+  const trialGameId = normalizeTrialId(settings.trialGameId);
+  if (!settings.trialEnabled || !trialGameId) {
+    return json({ detail: "Trial is not available." }, 403, request, env);
+  }
+
+  try {
+    if (path === "/trial/meta") {
+      const rom = await fetchTrialRom(env, trialGameId);
+      const meta = {
+        id: rom.id,
+        name: rom.name || rom.fs_name_no_ext || rom.fs_name || "Trial game",
+        fs_name: rom.fs_name || null,
+        fs_name_no_tags: rom.fs_name_no_tags || null,
+        fs_name_no_ext: rom.fs_name_no_ext || null,
+        platform_id: rom.platform_id ?? null,
+        platform_slug: rom.platform_slug || rom.platform_fs_slug || null,
+        platform_fs_slug: rom.platform_fs_slug || null,
+        platform_display_name: rom.platform_display_name || rom.platform_custom_name || rom.platform_name || null,
+        summary: rom.summary || null,
+        metadatum: rom.metadatum || null,
+        files: Array.isArray(rom.files) ? rom.files : [],
+        has_nested_single_file: Boolean(rom.has_nested_single_file),
+        path_cover_small: rom.path_cover_small || null,
+        path_cover_large: rom.path_cover_large || null,
+        url_cover: rom.url_cover || null,
+        coverUrl: `${trialBase(request)}/trial/cover`,
+      };
+      return json(meta, 200, request, env);
+    }
+
+    if (path === "/trial/cover") {
+      const rom = await fetchTrialRom(env, trialGameId);
+      const coverPath = pickCoverPath(rom, env);
+      if (!coverPath) {
+        return json({ detail: "Cover not found." }, 404, request, env);
+      }
+      const res = await rommTrialFetch(env, coverPath, { headers: { Accept: "image/*,*/*;q=0.8" } });
+      if (!res.ok) {
+        return json({ detail: "Cover unavailable." }, res.status === 404 ? 404 : 502, request, env);
+      }
+      return trialCorsResponse(res, request, env);
+    }
+
+    if (path === "/trial/content") {
+      const fileName = String(url.searchParams.get("file_name") || "").trim();
+      const fileIds = String(url.searchParams.get("file_ids") || "").trim();
+      if (!fileName) {
+        return json({ detail: "Missing file_name." }, 400, request, env);
+      }
+      const params = new URLSearchParams({ purpose: "play" });
+      if (fileIds) params.set("file_ids", fileIds);
+      const contentPath = `/api/roms/${encodeURIComponent(trialGameId)}/content/${encodeURIComponent(fileName)}?${params.toString()}`;
+      const res = await rommTrialFetch(env, contentPath, { headers: { Accept: "*/*" } });
+      if (!res.ok) {
+        return json({ detail: "Couldn't load the trial game file." }, res.status === 404 ? 404 : 502, request, env);
+      }
+      return trialCorsResponse(res, request, env);
+    }
+
+    return json({ detail: "Not found." }, 403, request, env);
+  } catch (error) {
+    const status = error?.status === 404 ? 404 : 502;
+    return json({ detail: status === 404 ? "Trial game not found." : "Trial is temporarily unavailable." }, status, request, env);
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -621,6 +778,12 @@ export default {
       if (settingsResponse) return settingsResponse;
     } catch (error) {
       return json({ detail: error?.message || "Settings error." }, 502, request, env);
+    }
+    try {
+      const trialResponse = await handleTrial(request, env);
+      if (trialResponse) return trialResponse;
+    } catch (error) {
+      return json({ detail: error?.message || "Trial error." }, 502, request, env);
     }
     const id = env.RELAY.idFromName("global");
     return env.RELAY.get(id).fetch(request);

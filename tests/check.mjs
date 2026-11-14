@@ -292,8 +292,135 @@ async function checkSettings() {
   }
 }
 
+async function checkTrialProxy() {
+  const makeKv = (initial) => {
+    const store = new Map(initial ? [[SETTINGS_KEY, JSON.stringify(initial)]] : []);
+    return {
+      store,
+      kv: {
+        async get(key, type) {
+          if (!store.has(key)) return null;
+          const value = store.get(key);
+          return type === "json" ? JSON.parse(value) : value;
+        },
+        async put(key, value) {
+          store.set(key, String(value));
+        },
+      },
+    };
+  };
+  const SETTINGS_KEY = "app-settings";
+  const rom = {
+    id: 42,
+    name: "Trial ROM",
+    fs_name: "trial.gba",
+    platform_slug: "gba",
+    platform_fs_slug: "gba",
+    path_cover_small: "covers/small.png",
+    url_cover: "https://romm.test/assets/romm/resources/roms/1/42/cover/small.png",
+    files: [{ id: 7, file_name: "trial.gba", file_size_bytes: 1234 }],
+  };
+  const origFetch = globalThis.fetch;
+  try {
+    const rommCalls = [];
+    globalThis.fetch = async (url, init = {}) => {
+      const target = String(url);
+      const auth = init.headers?.Authorization || init.headers?.authorization || "";
+      rommCalls.push({ target, auth, method: init.method || "GET" });
+      if (target === "https://romm.test/api/roms/42") {
+        if (auth !== "Bearer worker-secret") return new Response("unauthorized", { status: 401 });
+        return new Response(JSON.stringify(rom), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (target.includes("/assets/romm/resources/roms/1/42/cover/small.png") || target.endsWith("/covers/small.png")) {
+        if (auth !== "Bearer worker-secret") return new Response("unauthorized", { status: 401 });
+        return new Response("PNGDATA", { status: 200, headers: { "Content-Type": "image/png" } });
+      }
+      if (target.startsWith("https://romm.test/api/roms/42/content/trial.gba")) {
+        if (auth !== "Bearer worker-secret") return new Response("unauthorized", { status: 401 });
+        const u = new URL(target);
+        if (u.searchParams.get("purpose") !== "play" || u.searchParams.get("file_ids") !== "7") {
+          return new Response(JSON.stringify({ detail: "bad params" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response("ROMBYTES", { status: 200, headers: { "Content-Type": "application/octet-stream" } });
+      }
+      throw new Error(`Unexpected fetch in trial test: ${target} auth=${auth}`);
+    };
+
+    const baseEnv = {
+      ROMM_ORIGIN: "https://romm.test",
+      ALLOWED_ORIGINS: "https://crymises.github.io",
+      SIGNUP_RELAY: { idFromName: () => "x", get: () => ({ fetch: () => new Response("{}", { status: 404 }) }) },
+    };
+    const call = (path, { method = "GET", env, headers = {} } = {}) =>
+      workerMod.default.fetch(
+        new Request(`https://relay.test${path}`, { method, headers: { Origin: "https://crymises.github.io", ...headers } }),
+        env,
+        {},
+      );
+
+    // 503 when secret missing
+    {
+      const { kv } = makeKv({ trialGameId: 42, trialEnabled: true, registrationEnabled: true });
+      const res = await call("/trial/meta", { env: { ...baseEnv, SETTINGS: kv } });
+      var secretMissing503 = res.status === 503;
+    }
+
+    // 403 when disabled or missing id
+    {
+      const { kv } = makeKv({ trialGameId: 42, trialEnabled: false, registrationEnabled: true });
+      const disabled = await call("/trial/meta", { env: { ...baseEnv, SETTINGS: kv, TRIAL_API_TOKEN: "worker-secret" } });
+      const { kv: kv2 } = makeKv({ trialGameId: null, trialEnabled: true, registrationEnabled: true });
+      const missing = await call("/trial/meta", { env: { ...baseEnv, SETTINGS: kv2, TRIAL_API_TOKEN: "worker-secret" } });
+      var disabled403 = disabled.status === 403 && missing.status === 403;
+    }
+
+    // Enabled trial: meta/cover/content served; only allowed paths and secret attached
+    rommCalls.length = 0;
+    const { kv: okKv } = makeKv({ trialGameId: 42, trialEnabled: true, registrationEnabled: true });
+    const okEnv = { ...baseEnv, SETTINGS: okKv, TRIAL_API_TOKEN: "worker-secret" };
+    const metaRes = await call("/trial/meta", { env: okEnv });
+    const meta = await metaRes.json();
+    const coverRes = await call("/trial/cover", { env: okEnv });
+    const coverBody = await coverRes.text();
+    const contentRes = await call("/trial/content?file_name=trial.gba&file_ids=7", { env: okEnv });
+    const contentBody = await contentRes.text();
+    const wrongFile = await call("/trial/content", { env: okEnv });
+    const postMeta = await call("/trial/meta", { method: "POST", env: okEnv });
+    const otherPath = await call("/trial/roms/42", { env: okEnv });
+    const allSecret = rommCalls.length > 0 && rommCalls.every((c) => c.auth === "Bearer worker-secret");
+    const onlyAllowed = rommCalls.every((c) =>
+      [
+        "/api/roms/42",
+        "/api/assets/romm/resources/roms/1/42/cover/small.png",
+        "/assets/romm/resources/roms/1/42/cover/small.png",
+        "/api/roms/42/content/trial.gba",
+      ].some((p) => c.target.startsWith(`https://romm.test${p}`)),
+    );
+
+    return {
+      secretMissing503,
+      disabled403,
+      metaOk:
+        metaRes.status === 200 &&
+        meta.id === 42 &&
+        String(meta.coverUrl).endsWith("/trial/cover") &&
+        meta.files?.[0]?.file_name === "trial.gba",
+      coverOk: coverRes.status === 200 && coverBody === "PNGDATA",
+      _debug: { coverStatus: coverRes.status, coverBody: String(coverBody).slice(0, 20), calls: rommCalls.map((c) => c.target) },
+      contentOk: contentRes.status === 200 && contentBody === "ROMBYTES",
+      contentMissingFile400: wrongFile.status === 400,
+      writeBlocked403: postMeta.status === 403,
+      otherPathBlocked403: otherPath.status === 403,
+      rommAuthAndPaths: allSecret && onlyAllowed,
+    };
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+}
+
 const relayChecks = await checkRelayDO();
 const settingsChecks = await checkSettings();
+const trialProxyChecks = await checkTrialProxy();
 
 /* Stay signed in: session routing between localStorage and sessionStorage. */
 function fakeStorage() {
@@ -366,7 +493,8 @@ const checks = [
   ["Signup claim URL", config.signupClaimUrl("c123") === `${config.APP_PUBLIC_URL}/?claim=c123#/register`],
   ["Settings API method", typeof api.api.settings === "function"],
   ["Save settings API method", typeof api.api.saveSettings === "function"],
-  ["Public rom API method", typeof api.api.romPublic === "function"],
+  ["Trial meta API method", typeof api.api.trialMeta === "function"],
+  ["Relay URL helper", typeof api.relayUrl === "function" && api.relayUrl("/trial/meta").endsWith("/trial/meta")],
   ["Register API method", typeof api.api.register === "function"],
   ["Invite link API method", typeof api.api.createInviteLink === "function"],
   ["Users API method", typeof api.api.users === "function"],
@@ -400,6 +528,15 @@ const checks = [
   ["Worker settings POST requires auth", settingsChecks.postNeedsAuth],
   ["Worker settings POST blocks non-admin", settingsChecks.postBlocksNonAdmin],
   ["Worker settings admin can save", settingsChecks.adminCanSave],
+  ["Trial proxy 503 when secret missing", trialProxyChecks.secretMissing503],
+  ["Trial proxy 403 when disabled/missing", trialProxyChecks.disabled403],
+  ["Trial proxy meta rewrites cover URL", trialProxyChecks.metaOk],
+  ["Trial proxy streams cover", trialProxyChecks.coverOk],
+  ["Trial proxy streams content", trialProxyChecks.contentOk],
+  ["Trial proxy content requires file_name", trialProxyChecks.contentMissingFile400],
+  ["Trial proxy blocks write methods", trialProxyChecks.writeBlocked403],
+  ["Trial proxy blocks non-allowed paths", trialProxyChecks.otherPathBlocked403],
+  ["Trial proxy uses secret and allowed RomM paths only", trialProxyChecks.rommAuthAndPaths],
 ];
 
 let failed = 0;

@@ -310,18 +310,49 @@ async function mockRomm(
   await page.route("https://fonts.googleapis.com/**", (route) => route.abort());
   await page.route("https://fonts.gstatic.com/**", (route) => route.abort());
 
-  /* Public app settings (relay) — default: trial off, registration on. */
+  /* Public app settings + trial proxy (relay) — default: trial off, registration on. */
   await page.route("https://binusarcade-signup-relay.samuel314285.workers.dev/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const settings =
       relaySettings || { trialGameId: null, trialEnabled: false, registrationEnabled: true };
+    const relayBase = "https://binusarcade-signup-relay.samuel314285.workers.dev";
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
     if (url.pathname === "/settings" && request.method() === "GET") {
       return send(route, settings);
     }
     if (url.pathname === "/settings" && request.method() === "POST") {
       return send(route, settings);
+    }
+    const trialId = Number(settings.trialGameId);
+    const trialRom = games.find((item) => item.id === trialId);
+    const trialOk = settings.trialEnabled === true && trialRom;
+    if (url.pathname === "/trial/meta") {
+      if (request.method() !== "GET") return send(route, { detail: "Not allowed" }, 403);
+      if (!trialOk) return send(route, { detail: "Trial unavailable" }, 403);
+      return send(route, { ...trialRom, coverUrl: `${relayBase}/trial/cover` });
+    }
+    if (url.pathname === "/trial/cover") {
+      if (request.method() !== "GET") return send(route, { detail: "Not allowed" }, 403);
+      if (!trialOk) return send(route, { detail: "Trial unavailable" }, 403);
+      return route.fulfill({ status: 200, headers: { "content-type": "image/svg+xml", ...cors }, body: '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="360"></svg>' });
+    }
+    if (url.pathname === "/trial/content") {
+      if (request.method() !== "GET") return send(route, { detail: "Not allowed" }, 403);
+      if (!trialOk) return send(route, { detail: "Trial unavailable" }, 403);
+      if (!url.searchParams.get("file_name")) return send(route, { detail: "file_name required" }, 400);
+      return route.fulfill({ status: 200, headers: { "content-type": "application/octet-stream", ...cors }, body: Buffer.alloc(32) });
+    }
+    if (url.pathname === "/register" && request.method() === "POST") {
+      let payload = {};
+      try { payload = request.postDataJSON() || {}; } catch {}
+      if (payload.username === "badinvite") {
+        return send(route, { detail: [{ msg: "Invite token expired" }] }, 422);
+      }
+      return send(route, { id: 2, username: payload.username, email: payload.email, enabled: true }, 201);
+    }
+    if (url.pathname === "/registered" && request.method() === "POST") {
+      return send(route, { ok: true });
     }
     return send(route, { detail: "Not found" }, 404);
   });
@@ -953,7 +984,7 @@ try {
 
   /* Trial/login settings behavior */
   {
-    const { context, page } = await newPage(browser, { signedIn: false, lang: "en" });
+    const { context, page } = await newPage(browser, { signedIn: false, lang: "en", relayUrl: null });
     await page.goto(base);
     await page.waitForSelector("#login-username", { timeout: 10_000 });
     assert(await page.isVisible('a[href="#/register"]'), "default login shows create account link");
@@ -967,9 +998,37 @@ try {
   }
 
   {
+    const rommBefore = recorded.length;
     const { context, page } = await newPage(browser, {
       signedIn: false,
       lang: "en",
+      relayUrl: null,
+      relaySettings: { trialGameId: 1, trialEnabled: true, registrationEnabled: true },
+    });
+    await page.goto(base);
+    await page.waitForSelector("#login-username", { timeout: 10_000 });
+    await page.waitForSelector("text=Try one game", { timeout: 10_000 });
+    assert(await page.isVisible("text=Mario Kart: Super Circuit"), "enabled trial shows trial game title on login");
+    await page.click('a[href="#/trial"]');
+    await page.waitForSelector('[data-trial-view]', { timeout: 10_000 });
+    await page.waitForSelector("text=Mario Kart: Super Circuit", { timeout: 10_000 });
+    assert(await page.isVisible("text=Trial mode — progress won't be saved."), "guest trial shows no-save notice");
+    assert(await page.isVisible("text=Sign in for the full library"), "guest trial offers sign-in CTA");
+    const stored = await page.evaluate(() => ({
+      sessionS: sessionStorage.getItem("binusarcade.session"),
+      sessionL: localStorage.getItem("binusarcade.session"),
+    }));
+    assert(!stored.sessionS && !stored.sessionL, "guest trial stores no session tokens");
+    const rommCalls = recorded.slice(rommBefore);
+    assert(rommCalls.length === 0, `guest trial makes zero RomM-origin requests (${rommCalls.map((c) => c.path).join(",")})`);
+    await context.close();
+  }
+
+  {
+    const { context, page } = await newPage(browser, {
+      signedIn: false,
+      lang: "en",
+      relayUrl: null,
       relaySettings: { trialGameId: null, trialEnabled: false, registrationEnabled: false },
     });
     await page.goto(`${base}#/register`);

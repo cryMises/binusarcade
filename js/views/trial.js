@@ -1,18 +1,13 @@
 import {
   api,
-  coverUrl,
-  firmwareUrl,
   isAbortError,
   publicDownloadBlob,
-  publicRequest,
-  romContentUrl,
-  romFileChoices,
+  relayUrl,
 } from "../api.js";
 import {
   clear,
   cover,
   el,
-  emptyState,
   errorState,
   formatBytes,
   icon,
@@ -56,12 +51,15 @@ function normalizeSettings(settings) {
   };
 }
 
+/* Resolves the trial only when settings allow it AND /trial/meta succeeds
+ * (Worker enforces enabled, game id, and secret; 503/403 -> hidden). */
 export async function resolveTrial(settings, { signal } = {}) {
   const s = normalizeSettings(settings);
   if (!s.trialEnabled || !s.trialGameId) return null;
   try {
-    const rom = await api.romPublic(s.trialGameId, { signal });
+    const rom = await api.trialMeta({ signal });
     if (!rom?.id) return null;
+    if (normalizeSettings({ trialGameId: rom.id }).trialGameId !== s.trialGameId) return null;
     if (!isSupportedPlatform(platformSlugOf(rom), rom.platform_slug, rom.platform_fs_slug)) return null;
     return { settings: s, rom };
   } catch {
@@ -69,11 +67,31 @@ export async function resolveTrial(settings, { signal } = {}) {
   }
 }
 
+function trialContentUrl(rom, file) {
+  const base = relayUrl("/trial/content");
+  if (!base) return null;
+  const fileName =
+    file?.file_name ||
+    (rom?.has_nested_single_file && rom?.files?.length === 1
+      ? rom.files[0].file_name
+      : rom?.fs_name);
+  if (!fileName) return null;
+  const params = new URLSearchParams({ file_name: fileName });
+  if (file?.id) params.set("file_ids", String(file.id));
+  return `${base}?${params.toString()}`;
+}
+
+function romFileChoices(rom) {
+  const files = Array.isArray(rom?.files) ? [...rom.files] : [];
+  if (!files.length) return [];
+  files.sort((a, b) => String(a.file_name || "").localeCompare(String(b.file_name || "")));
+  return files;
+}
+
 export function trialView(ctx) {
-  const root = el("div", { class: "view wrap trial-view" });
+  const root = el("div", { class: "view wrap trial-view", "data-trial-view": "" });
   let cleanup = () => {};
   let rom = null;
-  let platform = null;
   let files = [];
   let selectedFile = null;
   let core = null;
@@ -81,7 +99,6 @@ export function trialView(ctx) {
   let iframe = null;
   let iframeWindow = null;
   let romBlobUrl = null;
-  let biosBlobUrl = null;
   let downloadController = null;
   let downloadActive = false;
 
@@ -154,7 +171,6 @@ export function trialView(ctx) {
       iframe = null;
       iframeWindow = null;
       if (romBlobUrl) URL.revokeObjectURL(romBlobUrl);
-      if (biosBlobUrl) URL.revokeObjectURL(biosBlobUrl);
       downloadController?.abort();
     };
   }
@@ -173,7 +189,8 @@ export function trialView(ctx) {
     if (progressText) progressText.textContent = t("Fetching the game…");
 
     try {
-      const contentUrl = romContentUrl(rom, selectedFile);
+      const contentUrl = trialContentUrl(rom, selectedFile);
+      if (!contentUrl) throw new Error(t("Trial game file is unavailable."));
       const blob = await publicDownloadBlob(contentUrl, {
         signal: downloadController.signal,
         onProgress: ({ received, total }) => {
@@ -194,11 +211,6 @@ export function trialView(ctx) {
       romBlobUrl = URL.createObjectURL(blob);
       if (progressText) progressText.textContent = t("Preparing the emulator…");
 
-      let biosUrl;
-      if (core === "pcsx_rearmed" || core === "mednafen_psx_hw") {
-        biosUrl = await loadBios().catch(() => null);
-      }
-
       const stageCard = root.querySelector("[data-stage-card]");
       const stage = el("div", { class: "play-stage" });
       stageCard?.replaceChildren(stage);
@@ -209,7 +221,6 @@ export function trialView(ctx) {
         gameUrl: romBlobUrl,
         gameName: rom.fs_name_no_tags || rom.name || "Trial game",
         gameID: rom.id,
-        biosUrl,
         loader: EJS_LOADER,
         ejsData: EJS_CDN,
         ruffle: RUFFLE_CDN,
@@ -230,128 +241,95 @@ export function trialView(ctx) {
       if (startButton) startButton.disabled = false;
     } finally {
       downloadActive = false;
+      downloadController = null;
     }
   }
 
-  async function loadBios() {
-    if (!platform?.firmware?.length) return null;
-    const firmware = platform.firmware.find((item) => !item.missing_from_fs);
-    if (!firmware) return null;
-    const url = firmwareUrl(firmware);
-    if (!url) return null;
-    try {
-      const blob = await publicDownloadBlob(url, { signal: downloadController.signal });
-      biosBlobUrl = URL.createObjectURL(blob);
-      return biosBlobUrl;
-    } catch {
-      toast(t("BIOS wasn't available. Some games may not boot without one."), { tone: "warn", duration: 5200 });
-      return null;
-    }
-  }
-
-  function renderDetailLite() {
+  function renderDetail() {
     clear(root);
-    const accent = colorForPlatform(platformSlugOf(rom), platformLabelOf(rom));
-    const coverEl = cover(rom, { size: "large", eager: true });
-    const stageCard = el("div", { class: "play-stage-card", dataset: { "stage-card": "" } },
-      el("div", { class: "play-stage" },
-        el("div", { class: "play-setup", style: { "grid-template-columns": "1fr", "place-items": "center", "text-align": "center", "min-height": "260px" } },
-          el("p", { class: "note", style: { "max-width": "34ch" } }, t("Press START to load the trial game in your browser.")),
-        ),
+    files = romFileChoices(rom);
+    selectedFile = files.length === 1 ? files[0] : files[0] || null;
+    const cores = coresForPlatform(rom);
+    core = cores[0] || null;
+    mode = isRufflePlatform(rom) ? "ruffle" : "ejs";
+    const platformName = platformLabelOf(rom);
+    const file = selectedFile;
+    const size = file?.file_size_bytes ? formatBytes(file.file_size_bytes) : "";
+
+    const startButton = el(
+      "button",
+      { class: "btn btn-primary", type: "button", "data-start": "", on: { click: startGame } },
+      icon("play", 18),
+      t("START GAME"),
+    );
+    const progressBox = el(
+      "div",
+      { class: "trial-progress", "data-progress": "", hidden: "" },
+      el("div", { class: "progress-track" }, el("div", { class: "progress-fill", "data-progress-fill": "" })),
+      el("p", { class: "muted", "data-progress-text": "" }, ""),
+    );
+
+    const hero = el(
+      "section",
+      { class: "trial-hero card" },
+      el(
+        "div",
+        { class: "trial-hero-media" },
+        cover(rom, { size: "large", alt: rom.name || t("Trial game"), class: "trial-cover" }),
+      ),
+      el(
+        "div",
+        { class: "trial-hero-body" },
+        el("p", { class: "eyebrow" }, shortPlatformLabel(rom)),
+        el("h1", {}, rom.name || t("Trial game")),
+        el("p", { class: "muted" }, platformName),
+        core ? el("p", { class: "muted" }, t("{name} emulator", { name: core })) : null,
+        size ? el("p", { class: "muted" }, size) : null,
+        el("p", { class: "trial-note" }, t("No login needed. Progress won't be saved.")),
+        startButton,
+        progressBox,
+        el("div", { "data-trial-error": "" }),
       ),
     );
-
-    const facts = el("div", { class: "play-facts" },
-      el("span", { class: "chip-topic" }, platformLabelOf(rom)),
-      el("span", { class: "chip-topic" }, mode === "ruffle" ? "Ruffle" : core || "Emulator"),
-      selectedFile ? el("span", { class: "chip-topic" }, formatBytes(selectedFile.file_size_bytes)) : null,
-    );
-
-    const progressBox = el("div", { class: "play-progress", dataset: { progress: "" }, hidden: true },
-      el("div", { class: "progress-track", role: "progressbar", "aria-label": t("Game download") },
-        el("div", { class: "progress-fill", dataset: { "progress-fill": "" } }),
-      ),
-      el("div", { class: "ledger-note", dataset: { "progress-text": "" } }, t("Fetching…")),
-    );
-
-    const warnings = [
-      el("div", { class: "play-warning" }, icon("alert", 18),
-        el("span", {}, t("Trial mode — progress won't be saved."))),
-    ];
-    if (platformSlugOf(rom) === "nds") {
-      warnings.push(el("div", { class: "play-warning" }, icon("alert", 18),
-        el("span", {}, t("Nintendo DS touch screen works best with a mouse or stylus."))));
-    }
 
     root.append(
       buildTopBar(),
-      el("div", { class: "play-bar" },
-        el("div", { class: "play-bar-copy" },
-          el("div", { class: "eyebrow" }, t("Try one game")),
-          el("h1", { class: "play-bar-title" }, rom.name || rom.fs_name_no_ext || t("Trial game")),
-        ),
-        el("span", { class: "chip-cat", style: { "--cart": accent } }, shortPlatformLabel(rom)),
+      hero,
+      el(
+        "section",
+        { class: "card trial-stage-card", "data-stage-card": "" },
+        el("p", { class: "muted", "data-trial-status": "" }, t("Trial mode — progress won't be saved.")),
       ),
-      stageCard,
-      el("div", { class: "play-setup", dataset: { "setup-card": "" } },
-        el("div", { class: "play-setup-cover" }, coverEl),
-        el("div", { class: "play-setup-copy" },
-          el("div", { class: "eyebrow" }, t("No login needed")),
-          el("h2", {}, rom.name || rom.fs_name_no_ext || t("Trial game")),
-          facts,
-          el("div", { class: "play-start-row" },
-            el("button", { class: "btn btn-keycap btn-mint", type: "button", dataset: { start: "" }, on: { click: startGame } },
-              icon("play", 21), t("START GAME")),
-          ),
-          el("p", { class: "ledger-note", dataset: { "trial-status": "" } }, t("Waiting to start…")),
-          el("div", { dataset: { "trial-error": "" } }),
-          progressBox,
-          ...warnings,
-        ),
-      ),
-      el("p", { class: "note", style: { "margin-top": "18px" } }, t("Runs in your browser. Nothing is installed on your phone.")),
       siteFooter(),
     );
   }
 
-  (async () => {
+  async function init() {
     try {
-      const settings = await fetchTrialSettings({ signal: ctx.signal });
-      const trial = await resolveTrial(settings, { signal: ctx.signal });
-      if (!trial) {
-        ctx.navigate("/", { replace: true });
+      const settings = await fetchTrialSettings({ signal: ctx?.signal });
+      const resolved = await resolveTrial(settings, { signal: ctx?.signal });
+      if (!resolved?.rom) {
+        window.location.hash = "#/";
         return;
       }
-      rom = trial.rom;
-      document.title = `${rom.name || t("Trial game")} · Binus Arcade`;
-      files = romFileChoices(rom);
-      if (!files.length) {
-        try { files = romFileChoices({ ...rom, files: await api.romFilesPublic(rom.id) }); } catch { files = []; }
+      rom = resolved.rom;
+      if (!isSupportedPlatform(platformSlugOf(rom), rom.platform_slug, rom.platform_fs_slug)) {
+        window.location.hash = "#/";
+        return;
       }
-      selectedFile = files[0] || null;
-
-      const slug = platformSlugOf(rom);
-      core = coresForPlatform(slug, rom.platform_slug, rom.platform_fs_slug)[0] || null;
-      mode = isRufflePlatform(slug, rom.platform_slug, rom.platform_fs_slug) ? "ruffle" : "ejs";
-      try {
-        const platforms = await publicRequest("/platforms", { timeout: 10_000 });
-        platform = (platforms || []).find((item) => item.id === rom.platform_id || item.slug === rom.platform_slug || item.fs_slug === rom.platform_fs_slug) || null;
-      } catch { platform = null; }
-
-      renderDetailLite();
+      renderDetail();
     } catch (error) {
       if (isAbortError(error)) return;
       clear(root);
-      root.append(buildTopBar(), errorState(error, () => location.reload()));
+      root.append(buildTopBar(), errorState(error, init));
     }
-  })();
+  }
 
-  const onPageHide = () => cleanup();
-  window.addEventListener("pagehide", onPageHide);
+  init();
+
   return {
     el: root,
-    cleanup: () => {
-      window.removeEventListener("pagehide", onPageHide);
+    cleanup() {
       cleanup();
     },
   };

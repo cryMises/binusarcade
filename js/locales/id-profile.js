@@ -73,8 +73,8 @@ export default {
 
   /* Trial & registration settings (admin) */
   "Trial and registration": "Percobaan dan pendaftaran",
-  "Control the login page trial and self-registration. Trial play works only when RomM kiosk mode allows anonymous access.":
-    "Atur game percobaan dan pendaftaran mandiri di halaman masuk. Game percobaan hanya berfungsi saat mode kiosk RomM mengizinkan akses anonim.",
+  "Control the login page trial and self-registration. The trial game is served through the relay Worker; RomM stays closed to anonymous access.":
+    "Atur game percobaan dan pendaftaran mandiri di halaman masuk. Game percobaan disajikan lewat Worker relay; RomM tetap tertutup untuk akses anonim.",
   "Loading settings…": "Memuat pengaturan…",
   "Settings loaded.": "Pengaturan dimuat.",
   "Couldn't load settings.": "Gagal memuat pengaturan.",

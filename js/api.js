@@ -669,6 +669,7 @@ export function assetUrl(path) {
 
 export function coverUrl(rom, size = "large") {
   if (!rom) return null;
+  if (rom.coverUrl) return rom.coverUrl;
   const path =
     size === "small"
       ? rom.path_cover_small || rom.path_cover_large
@@ -690,6 +691,13 @@ export function avatarUrl(user) {
 
 export function hasSignupRelay() {
   return Boolean(String(SIGNUP_RELAY_URL || "").trim());
+}
+
+export function relayUrl(path = "") {
+  const base = String(SIGNUP_RELAY_URL || "").trim().replace(/\/+$/, "");
+  if (!base) return null;
+  const suffix = path ? (path.startsWith("/") ? path : `/${path}`) : "";
+  return `${base}${suffix}`;
 }
 
 async function relayRequest(path, { method = "GET", body, auth = false, signal, timeout = 12_000 } = {}) {
@@ -948,13 +956,9 @@ export const api = {
     });
   },
 
-  /* Token-less (kiosk guest) helpers — only work when server allows anonymous access. */
-  romPublic(id, { signal } = {}) {
-    return publicRequest(`/roms/${encodeURIComponent(id)}`, { signal, timeout: 12_000 });
-  },
-
-  romFilesPublic(id, { signal } = {}) {
-    return publicRequest(`/roms/${encodeURIComponent(id)}/files`, { signal, timeout: 12_000 });
+  /* Trial endpoints are served by the relay Worker (no RomM-origin calls from guest). */
+  trialMeta({ signal } = {}) {
+    return relayRequest("/trial/meta", { signal, timeout: 12_000 });
   },
 };
 

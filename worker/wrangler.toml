@@ -7,6 +7,11 @@ compatibility_date = "2026-11-01"
 #   wrangler kv namespace create SETTINGS
 #   wrangler kv namespace create SETTINGS --preview
 # Then replace the id/preview_id values below with the ones Wrangler prints.
+#
+# Trial proxy secret (RomM Client API Token, read-only scopes, never in repo/chat/browser):
+#   wrangler secret put TRIAL_API_TOKEN
+# Deploy after KV binding + secret are set:
+#   wrangler deploy
 [[kv_namespaces]]
 binding = "SETTINGS"
 id = "REPLACE_WITH_SETTINGS_KV_ID"

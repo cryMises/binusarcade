@@ -574,7 +574,7 @@ export function adminView() {
       el(
         "p",
         { class: "note" },
-        t("Control the login page trial and self-registration. Trial play works only when RomM kiosk mode allows anonymous access."),
+        t("Control the login page trial and self-registration. The trial game is served through the relay Worker; RomM stays closed to anonymous access."),
       ),
       status,
       el(
