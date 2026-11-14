@@ -89,6 +89,14 @@ function romFileChoices(rom) {
   return files;
 }
 
+/* Keep the emulator canvas landscape; a portrait canvas makes some cores
+ * (notably mGBA) paint a black screen while audio keeps running. */
+const STAGE_RATIOS = { gba: 3 / 2, gb: 10 / 9, gbc: 10 / 9, psp: 16 / 9 };
+
+function stageRatioFor(rom) {
+  return STAGE_RATIOS[platformSlugOf(rom)] || 4 / 3;
+}
+
 export function trialView(ctx, initial = null) {
   const root = el("div", { class: "view wrap trial-view", "data-trial-view": "" });
   let cleanup = () => {};
@@ -129,8 +137,14 @@ export function trialView(ctx, initial = null) {
         return;
       }
       const rect = canvas.getBoundingClientRect();
+      const host = root.querySelector("[data-stage-host]")?.getBoundingClientRect();
+      const frameRect = iframe?.getBoundingClientRect();
       const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
       console.info("[trial] player canvas", {
+        window: `${window.innerWidth}x${window.innerHeight}`,
+        dpr: window.devicePixelRatio,
+        host: host ? `${Math.round(host.width)}x${Math.round(host.height)}` : null,
+        frame: frameRect ? `${Math.round(frameRect.width)}x${Math.round(frameRect.height)}` : null,
         buffer: `${canvas.width}x${canvas.height}`,
         css: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
         display: getComputedStyle(canvas).display,
@@ -153,6 +167,46 @@ export function trialView(ctx, initial = null) {
     slot.append(el("div", { class: "play-warning", role: "alert" }, icon("alert", 18), el("span", {}, message)));
   }
 
+  /* Fullscreen is owned by the host page. EJS's own button sits under the
+   * player overlay on small screens, and on iOS the Fullscreen API is only
+   * available for arbitrary elements from Safari 16.4, so fall back to a
+   * fixed-position stage instead of leaving the player tiny. */
+  function syncStageFullscreen() {
+    const card = root.querySelector("[data-stage-card]");
+    const button = root.querySelector("[data-stage-fs]");
+    if (!card || !button) return;
+    const expanded = document.fullscreenElement === card || card.classList.contains("is-stage-expanded");
+    const label = expanded ? t("Exit full screen") : t("Full screen");
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.replaceChildren(icon(expanded ? "fullscreen-exit" : "fullscreen", 18));
+  }
+
+  function toggleStageFullscreen() {
+    const card = root.querySelector("[data-stage-card]");
+    if (!card) return;
+    if (document.fullscreenElement === card) {
+      document.exitFullscreen?.().catch(() => {});
+      return;
+    }
+    if (card.classList.contains("is-stage-expanded")) {
+      card.classList.remove("is-stage-expanded");
+      document.documentElement.classList.remove("stage-expanded");
+      syncStageFullscreen();
+      return;
+    }
+    const fallback = () => {
+      card.classList.add("is-stage-expanded");
+      document.documentElement.classList.add("stage-expanded");
+      syncStageFullscreen();
+    };
+    if (typeof card.requestFullscreen === "function") {
+      card.requestFullscreen().catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+
   function attachFrame(container, config) {
     iframe = el("iframe", {
       class: "play-iframe",
@@ -162,6 +216,7 @@ export function trialView(ctx, initial = null) {
       allowfullscreen: "",
     });
     container.replaceChildren(iframe);
+    root.querySelector("[data-stage-fs]")?.removeAttribute("hidden");
 
     const onMessage = (event) => {
       if (event.source !== iframeWindow) return;
@@ -324,6 +379,20 @@ export function trialView(ctx, initial = null) {
       el("div", { class: "trial-hero-actions" }, startButton, progressBox),
     );
 
+    const fsButton = el(
+      "button",
+      {
+        class: "stage-fs-btn",
+        type: "button",
+        "data-stage-fs": "",
+        "aria-label": t("Full screen"),
+        title: t("Full screen"),
+        hidden: "",
+        on: { click: () => toggleStageFullscreen() },
+      },
+      icon("fullscreen", 18),
+    );
+
     const stageCard = el(
       "section",
       { class: "card trial-stage-card", "data-stage-card": "" },
@@ -335,12 +404,17 @@ export function trialView(ctx, initial = null) {
           { class: "trial-stage-statusline" },
           el("span", { class: "trial-stage-dot", "aria-hidden": "true" }),
           el("p", { class: "trial-stage-status", "data-trial-status": "", "aria-live": "polite" }, t("Trial mode — progress won't be saved.")),
+          fsButton,
         ),
         el("div", { class: "trial-stage-alert", "data-trial-error": "" }),
       ),
       el(
         "div",
-        { class: "trial-stage-host", "data-stage-host": "" },
+        {
+          class: "trial-stage-host",
+          "data-stage-host": "",
+          style: { "--stage-aspect": String(stageRatioFor(rom)), "--stage-ratio": String(stageRatioFor(rom)) },
+        },
         el(
           "div",
           { class: "trial-stage-empty", "aria-hidden": "true" },
@@ -355,6 +429,24 @@ export function trialView(ctx, initial = null) {
       el("div", { class: "trial-layout" }, hero, stageCard),
       siteFooter(),
     );
+
+    const onEscape = (event) => {
+      if (event.key !== "Escape") return;
+      const card = root.querySelector("[data-stage-card]");
+      if (!card?.classList.contains("is-stage-expanded")) return;
+      card.classList.remove("is-stage-expanded");
+      document.documentElement.classList.remove("stage-expanded");
+      syncStageFullscreen();
+    };
+    document.addEventListener("fullscreenchange", syncStageFullscreen);
+    document.addEventListener("keydown", onEscape);
+    const stageCleanup = cleanup;
+    cleanup = () => {
+      stageCleanup?.();
+      document.removeEventListener("fullscreenchange", syncStageFullscreen);
+      document.removeEventListener("keydown", onEscape);
+      document.documentElement.classList.remove("stage-expanded");
+    };
   }
 
   async function init() {

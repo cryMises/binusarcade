@@ -1017,6 +1017,7 @@ try {
     await page.waitForSelector("text=Mario Kart: Super Circuit", { timeout: 10_000 });
     assert(await page.isVisible("text=Trial mode — progress won't be saved."), "guest trial shows no-save notice");
     assert(await page.isVisible("text=Sign in for the full library"), "guest trial offers sign-in CTA");
+    assert(!(await page.isVisible("[data-stage-fs]")), "fullscreen button waits until the player boots");
     const stored = await page.evaluate(() => ({
       sessionS: sessionStorage.getItem("binusarcade.session"),
       sessionL: localStorage.getItem("binusarcade.session"),

@@ -2649,6 +2649,7 @@ a.stat-card:hover {
 }
 
 .trial-stage-status {
+  flex: 1 1 auto;
   min-width: 0;
   margin: 0;
   color: var(--on-surface-muted);
@@ -2674,6 +2675,36 @@ a.stat-card:hover {
 
 .trial-stage-alert:not(:empty) {
   padding-bottom: 12px;
+}
+
+.stage-fs-btn {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  place-items: center;
+  transition: color 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+.stage-fs-btn[hidden] {
+  display: none;
+}
+
+.stage-fs-btn:hover,
+.stage-fs-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  color: var(--on-surface);
+}
+
+.stage-fs-btn svg {
+  fill: currentColor;
+  stroke: none;
 }
 
 .play-warning {
@@ -2703,7 +2734,9 @@ a.stat-card:hover {
 
 .trial-stage-host {
   position: relative;
-  height: clamp(280px, 64vw, 460px);
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--stage-aspect, 3 / 2);
   background: #08070b;
 }
 
@@ -2780,8 +2813,8 @@ a.stat-card:hover {
 }
 
 .play-stage {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
 }
 
 .play-stage iframe,
@@ -2792,6 +2825,44 @@ a.stat-card:hover {
   border: 0;
   background: #000;
   color-scheme: dark;
+}
+
+/* Host-level fullscreen: gives the canvas a big landscape box even when the
+ * page sits in a narrow window. The class is the no-API fallback (iOS). */
+.trial-stage-card:fullscreen,
+.trial-stage-card.is-stage-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  background: #08070b;
+}
+
+.trial-stage-card:fullscreen::backdrop {
+  background: #000;
+}
+
+.trial-stage-card:fullscreen .trial-stage-head,
+.trial-stage-card.is-stage-expanded .trial-stage-head {
+  flex: 0 0 auto;
+}
+
+.trial-stage-card:fullscreen .trial-stage-host,
+.trial-stage-card.is-stage-expanded .trial-stage-host {
+  flex: 0 0 auto;
+  width: min(100%, calc((100dvh - 56px) * var(--stage-ratio, 1.333)));
+  margin: auto;
+  aspect-ratio: var(--stage-aspect, 3 / 2);
+}
+
+html.stage-expanded,
+html.stage-expanded body {
+  overflow: hidden;
 }
 
 .trial-view > .play-loading {
@@ -2876,10 +2947,6 @@ a.stat-card:hover {
 
   .trial-title {
     font-size: clamp(1.5rem, 2.3vw, 1.875rem);
-  }
-
-  .trial-stage-host {
-    height: clamp(420px, 46vw, 640px);
   }
 }
 

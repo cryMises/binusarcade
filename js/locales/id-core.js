@@ -172,5 +172,7 @@ export default {
   "{received} downloaded": "{received} terunduh",
   "{received} of {total} ({pct}%)": "{received} dari {total} ({pct}%)",
   "{name} emulator": "Emulator {name}",
+  "Full screen": "Layar penuh",
+  "Exit full screen": "Keluar layar penuh",
   "/platforms": "/platforms",
 };

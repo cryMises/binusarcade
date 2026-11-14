@@ -170,7 +170,9 @@ async function bootEjs(config) {
     mute: true,
     unmute: true,
     settings: true,
-    fullscreen: true,
+    /* The host page owns fullscreen; the EJS button is buried under the
+     * player overlay on small screens. */
+    fullscreen: false,
   };
 
   if (config.biosUrl) window.EJS_biosUrl = config.biosUrl;

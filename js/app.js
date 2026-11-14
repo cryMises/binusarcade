@@ -43,7 +43,10 @@ let trialRouteStarted = false;
 let signedOutRender = 0;
 
 async function loadPublicState({ force = false } = {}) {
-  if (!force && publicSettings) return { settings: publicSettings, trial: trialState };
+  /* A trial that failed to resolve once (cold Worker, flaky network) must not
+   * stay "off" until reload: retry while settings still enable it. */
+  const retryTrial = Boolean(publicSettings?.trialEnabled && publicSettings?.trialGameId && !trialState);
+  if (!force && publicSettings && !retryTrial) return { settings: publicSettings, trial: trialState };
   /* Don't cache a transient relay failure as "no trial": logins would keep
    * hiding the trial until a full reload. */
   const settings = await fetchTrialSettings({ strict: true });
