@@ -107,7 +107,7 @@ export function trialView(ctx, initial = null) {
   function buildTopBar() {
     return el(
       "div",
-      { class: "trial-topbar", style: { display: "flex", "align-items": "center", "justify-content": "space-between", gap: "12px", margin: "8px 0 16px" } },
+      { class: "trial-topbar" },
       el("a", { class: "back-link", href: "#/" }, icon("arrow-left", 17), t("Sign in for the full library")),
       langSwitch(),
     );
@@ -131,6 +131,7 @@ export function trialView(ctx, initial = null) {
 
   function attachFrame(container, config) {
     iframe = el("iframe", {
+      class: "play-iframe",
       src: "./play-frame.html",
       title: t("{name} emulator", { name: rom?.name || t("Trial game") }),
       allow: "fullscreen; autoplay; gamepad; clipboard-write",
@@ -212,9 +213,9 @@ export function trialView(ctx, initial = null) {
       romBlobUrl = URL.createObjectURL(blob);
       if (progressText) progressText.textContent = t("Preparing the emulator…");
 
-      const stageCard = root.querySelector("[data-stage-card]");
+      const stageHost = root.querySelector("[data-stage-host]");
       const stage = el("div", { class: "play-stage" });
-      stageCard?.replaceChildren(stage);
+      stageHost?.replaceChildren(stage);
 
       attachFrame(stage, {
         mode,
@@ -260,7 +261,7 @@ export function trialView(ctx, initial = null) {
 
     const startButton = el(
       "button",
-      { class: "btn btn-primary", type: "button", "data-start": "", on: { click: startGame } },
+      { class: "btn btn-primary trial-start", type: "button", "data-start": "", on: { click: startGame } },
       icon("play", 18),
       t("START GAME"),
     );
@@ -268,7 +269,7 @@ export function trialView(ctx, initial = null) {
       "div",
       { class: "trial-progress", "data-progress": "", hidden: "" },
       el("div", { class: "progress-track" }, el("div", { class: "progress-fill", "data-progress-fill": "" })),
-      el("p", { class: "muted", "data-progress-text": "" }, ""),
+      el("p", { class: "trial-progress-text", "data-progress-text": "" }, ""),
     );
 
     const hero = el(
@@ -277,31 +278,54 @@ export function trialView(ctx, initial = null) {
       el(
         "div",
         { class: "trial-hero-media" },
-        cover(rom, { size: "large", alt: rom.name || t("Trial game"), class: "trial-cover" }),
+        cover(rom, { size: "large", alt: rom.name || t("Trial game"), class: "trial-cover", eager: true }),
       ),
       el(
         "div",
         { class: "trial-hero-body" },
         el("p", { class: "eyebrow" }, shortPlatformLabel(rom)),
-        el("h1", {}, rom.name || t("Trial game")),
-        el("p", { class: "muted" }, platformName),
-        core ? el("p", { class: "muted" }, t("{name} emulator", { name: core })) : null,
-        size ? el("p", { class: "muted" }, size) : null,
+        el("h1", { class: "trial-title" }, rom.name || t("Trial game")),
+        el("p", { class: "trial-platform muted" }, platformName),
+        el(
+          "div",
+          { class: "trial-meta" },
+          core ? el("span", { class: "trial-meta-chip" }, t("{name} emulator", { name: core })) : null,
+          size ? el("span", { class: "trial-meta-chip" }, size) : null,
+        ),
         el("p", { class: "trial-note" }, t("No login needed. Progress won't be saved.")),
-        startButton,
-        progressBox,
-        el("div", { "data-trial-error": "" }),
+      ),
+      el("div", { class: "trial-hero-actions" }, startButton, progressBox),
+    );
+
+    const stageCard = el(
+      "section",
+      { class: "card trial-stage-card", "data-stage-card": "" },
+      el(
+        "div",
+        { class: "trial-stage-head" },
+        el(
+          "div",
+          { class: "trial-stage-statusline" },
+          el("span", { class: "trial-stage-dot", "aria-hidden": "true" }),
+          el("p", { class: "trial-stage-status", "data-trial-status": "", "aria-live": "polite" }, t("Trial mode — progress won't be saved.")),
+        ),
+        el("div", { class: "trial-stage-alert", "data-trial-error": "" }),
+      ),
+      el(
+        "div",
+        { class: "trial-stage-host", "data-stage-host": "" },
+        el(
+          "div",
+          { class: "trial-stage-empty", "aria-hidden": "true" },
+          cover(rom, { size: "large", alt: rom.name || t("Trial game") }),
+          el("span", { class: "trial-stage-play" }, icon("play", 30)),
+        ),
       ),
     );
 
     root.append(
       buildTopBar(),
-      hero,
-      el(
-        "section",
-        { class: "card trial-stage-card", "data-stage-card": "" },
-        el("p", { class: "muted", "data-trial-status": "" }, t("Trial mode — progress won't be saved.")),
-      ),
+      el("div", { class: "trial-layout" }, hero, stageCard),
       siteFooter(),
     );
   }
