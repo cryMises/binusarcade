@@ -189,6 +189,7 @@ export function trialView(ctx, initial = null) {
     if (progressText) progressText.textContent = t("Fetching the game…");
 
     try {
+      if (mode === "ejs" && !core) throw new Error(t("No emulator core is mapped for this system."));
       const contentUrl = trialContentUrl(rom, selectedFile);
       if (!contentUrl) throw new Error(t("Trial game file is unavailable."));
       const blob = await publicDownloadBlob(contentUrl, {
@@ -249,9 +250,10 @@ export function trialView(ctx, initial = null) {
     clear(root);
     files = romFileChoices(rom);
     selectedFile = files.length === 1 ? files[0] : files[0] || null;
-    const cores = coresForPlatform(rom);
+    const slugValues = [platformSlugOf(rom), rom?.platform_slug, rom?.platform_fs_slug, rom?.platform_display_name];
+    const cores = coresForPlatform(...slugValues);
     core = cores[0] || null;
-    mode = isRufflePlatform(rom) ? "ruffle" : "ejs";
+    mode = isRufflePlatform(...slugValues) ? "ruffle" : "ejs";
     const platformName = platformLabelOf(rom);
     const file = selectedFile;
     const size = file?.file_size_bytes ? formatBytes(file.file_size_bytes) : "";
@@ -311,20 +313,25 @@ export function trialView(ctx, initial = null) {
       } else {
         const settings = await fetchTrialSettings({ signal: ctx?.signal });
         const resolved = await resolveTrial(settings, { signal: ctx?.signal });
-        if (!resolved?.rom) {
-          if (!rom) window.location.hash = "#/";
-          return;
+        if (resolved?.rom) {
+          rom = resolved.rom;
         }
-        rom = resolved.rom;
       }
-      if (!isSupportedPlatform(platformSlugOf(rom), rom.platform_slug, rom.platform_fs_slug)) {
-        if (!initial?.rom) window.location.hash = "#/";
+      if (!rom?.id) {
+        if (location.hash === "#/trial") history.replaceState(null, "", "#/");
+        if (!app.querySelector(".login-form")) window.location.hash = "#/";
+        return;
+      }
+      const slugValues = [platformSlugOf(rom), rom?.platform_slug, rom?.platform_fs_slug, rom?.platform_display_name];
+      if (!isSupportedPlatform(...slugValues)) {
+        clear(root);
+        root.append(buildTopBar(), errorState(new Error(t("No emulator core is mapped for this system."))));
         return;
       }
       renderDetail();
     } catch (error) {
       if (isAbortError(error)) return;
-      if (rom) {
+      if (rom?.id) {
         renderDetail();
         return;
       }

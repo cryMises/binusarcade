@@ -139,6 +139,10 @@ export default {
   "No login needed. Progress won't be saved.": "Tanpa perlu masuk. Progres tidak akan disimpan.",
   "Sign in for the full library": "Masuk untuk library lengkap",
   "Loading the trial game…": "Memuat game percobaan…",
+  "The trial game isn't available right now. Sign in for the full library.":
+    "Game percobaan sedang tidak tersedia. Masuk untuk library lengkap.",
+  "No emulator core is mapped for this system.":
+    "Tidak ada inti emulator yang dipetakan untuk sistem ini.",
   "Registration is currently closed. Ask the admin for access.":
     "Pendaftaran sedang ditutup. Minta akses ke admin.",
   "Press START to load the trial game in your browser.":

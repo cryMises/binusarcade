@@ -58,12 +58,20 @@ async function renderSignedOut() {
   const hasInvite = params.has("token") || params.has("claim");
 
   if (path === "/trial") {
+    /* Avoid tearing down an active trial (e.g. during gameplay) on re-renders. */
+    if (app.querySelector("[data-trial-view]") && registerCleanup) {
+      document.title = `${t("Try one game")} · Binus Arcade`;
+      return;
+    }
     registerCleanup?.();
     registerCleanup = null;
-    const { trial } = await loadPublicState().catch(() => ({ trial: null }));
+    let { trial } = await loadPublicState().catch(() => ({ trial: trialState }));
+    if (!trial?.rom) {
+      ({ trial } = await loadPublicState({ force: true }).catch(() => ({ trial: null })));
+    }
     if (renderId !== signedOutRender || hasSession()) return;
     if (!trial?.rom) {
-      renderLogin();
+      renderLogin(t("The trial game isn't available right now. Sign in for the full library."));
       if (location.hash === "#/trial") history.replaceState(null, "", "#/");
       return;
     }
