@@ -1,6 +1,7 @@
 import { avatarUrl, getSession, hasSession, isAdmin, isPersistentSession, setPersistentSession } from "./api.js";
 import { login, logout, restoreSession, userInitials, userLabel } from "./auth.js";
 import {
+  cover,
   el,
   icon,
   langSwitch,
@@ -17,6 +18,7 @@ import { libraryView } from "./views/library.js";
 import { shelfView } from "./views/shelf.js";
 import { registerView } from "./views/register.js";
 import { signupView } from "./views/signup.js";
+import { fetchTrialSettings, resolveTrial, trialView } from "./views/trial.js";
 
 const app = document.getElementById("app");
 let routerStarted = false;
@@ -34,12 +36,62 @@ const NAV_ITEMS = [
 /* Boot                                                               */
 /* ------------------------------------------------------------------ */
 
-function renderSignedOut() {
+let publicSettings = null;
+let trialState = null;
+let trialRouteStarted = false;
+let signedOutRender = 0;
+
+async function loadPublicState({ force = false } = {}) {
+  if (!force && publicSettings) return { settings: publicSettings, trial: trialState };
+  const settings = await fetchTrialSettings();
+  publicSettings = settings;
+  trialState = await resolveTrial(settings).catch(() => null);
+  document.documentElement.dataset.publicSettings = "ready";
+  return { settings: publicSettings, trial: trialState };
+}
+
+function startTrialRouteIfNeeded() {
+  if (trialRouteStarted) return;
+  addRoute("/trial", (ctx) => trialView(ctx));
+  trialRouteStarted = true;
+}
+
+async function renderSignedOut() {
+  const renderId = ++signedOutRender;
   const { path } = readHash();
   const params = new URLSearchParams(window.location.search);
   const hasInvite = params.has("token") || params.has("claim");
+  startTrialRouteIfNeeded();
+
+  if (path === "/trial") {
+    registerCleanup?.();
+    registerCleanup = null;
+    const { trial } = await loadPublicState().catch(() => ({ trial: null }));
+    if (renderId !== signedOutRender || hasSession()) return;
+    if (!trial?.rom) {
+      renderLogin();
+      if (location.hash === "#/trial") history.replaceState(null, "", "#/");
+      return;
+    }
+    if (!routerStarted) {
+      routerStarted = true;
+      startRouter(app, () => {});
+    } else {
+      startRouter(app, () => {});
+      rerender();
+    }
+    return;
+  }
+
   if (path === "/register" || (!window.location.hash && hasInvite)) {
     registerCleanup?.();
+    const { settings } = await loadPublicState().catch(() => ({ settings: { registrationEnabled: true } }));
+    if (renderId !== signedOutRender || hasSession()) return;
+    if (settings?.registrationEnabled === false && !hasInvite) {
+      registerCleanup = null;
+      renderLogin(t("Registration is currently closed. Ask the admin for access."));
+      return;
+    }
     const view = registerView();
     registerCleanup = view.cleanup || null;
     app.replaceChildren(view.el);
@@ -49,7 +101,26 @@ function renderSignedOut() {
 
   registerCleanup?.();
   registerCleanup = null;
-  renderLogin();
+  /* Try to apply public settings quickly without blocking sign-in. */
+  const quick = Promise.race([
+    loadPublicState(),
+    new Promise((resolve) => setTimeout(() => resolve(null), 900)),
+  ]);
+  const initial = await quick.catch(() => null);
+  if (renderId !== signedOutRender || hasSession()) return;
+  if (initial?.settings) {
+    renderLogin("", initial);
+  } else {
+    renderLogin();
+    loadPublicState()
+      .then(({ settings, trial }) => {
+        if (hasSession()) return;
+        renderLogin("", { settings, trial });
+      })
+      .catch(() => {
+        /* fail soft: keep sign-in/register-per-default */
+      });
+  }
 }
 
 function onSignedOutHash() {
@@ -113,9 +184,14 @@ function renderBoot(note) {
 /* Login                                                              */
 /* ------------------------------------------------------------------ */
 
-function renderLogin(message = "") {
+function renderLogin(message = "", opts = {}) {
   const flash = message || takeFlash();
   document.title = `${t("Sign in")} · Binus Arcade`;
+
+  const settings = opts.settings || publicSettings || { registrationEnabled: true };
+  const trial = opts.trial !== undefined ? opts.trial : trialState;
+  const registrationEnabled = settings?.registrationEnabled !== false;
+  const showTrial = Boolean(trial?.rom && settings?.trialEnabled && settings?.trialGameId);
 
   const previousName = document.getElementById("login-username")?.value || "";
 
@@ -210,7 +286,7 @@ function renderLogin(message = "") {
     } catch (error) {
       submit.disabled = false;
       submit.replaceChildren(icon("play", 18), t("Sign in"));
-      const message =
+      const msg =
         error?.status === 0
           ? t(
               "Can't reach the RomM server. Ask the server owner to allow this origin in ROMM_CORS_ALLOWED_ORIGINS, then try again.",
@@ -218,7 +294,7 @@ function renderLogin(message = "") {
           : error?.status === 401
             ? t("That username and password didn't match.")
             : error?.detail || error?.message || t("Couldn't sign in. Try again.");
-      const box = el("div", { class: "login-error", role: "alert" }, icon("alert", 18), el("span", {}, message));
+      const box = el("div", { class: "login-error", role: "alert" }, icon("alert", 18), el("span", {}, msg));
       form.insertBefore(box, submit);
     }
   });
@@ -234,6 +310,41 @@ function renderLogin(message = "") {
       t("Your RomM library, tuned for a phone. Stats, shelves, and saves — no clutter."),
     ),
   );
+
+  const registerRow = registrationEnabled
+    ? el(
+        "p",
+        { class: "login-register-row" },
+        t("Have an invite? "),
+        el("a", { class: "login-register-link", href: "#/register" }, t("Create account")),
+      )
+    : null;
+
+  const trialBlock = showTrial
+    ? el(
+        "section",
+        { class: "login-trial block", "data-trial-block": "" },
+        el("div", { class: "eyebrow" }, t("Try one game")),
+        el(
+          "div",
+          { class: "login-trial-body", style: { display: "flex", gap: "12px", alignItems: "center", margin: "8px 0 12px" } },
+          el("div", { style: { width: "72px", flex: "0 0 auto" } }, cover(trial.rom, { size: "small", eager: true })),
+          el(
+            "div",
+            { class: "login-trial-copy", style: { minWidth: 0 } },
+            el("strong", { style: { display: "block" } }, trial.rom.name || t("Trial game")),
+            el("span", { class: "note" }, trial.rom.platform_display_name || trial.rom.platform_slug || ""),
+          ),
+        ),
+        el(
+          "a",
+          { class: "btn btn-keycap btn-mint", href: "#/trial" },
+          icon("play", 18),
+          t("Try one game"),
+        ),
+        el("p", { class: "note", style: { marginTop: "8px" } }, t("No login needed. Progress won't be saved.")),
+      )
+    : null;
 
   app.replaceChildren(
     el(
@@ -259,12 +370,8 @@ function renderLogin(message = "") {
             t("Sign in with your RomM account. Your password never touches storage."),
           ),
           form,
-          el(
-            "p",
-            { class: "login-register-row" },
-            t("Have an invite? "),
-            el("a", { class: "login-register-link", href: "#/register" }, t("Create account")),
-          ),
+          registerRow,
+          trialBlock,
           el(
             "details",
             { class: "login-note login-help" },
@@ -297,6 +404,7 @@ function renderLogin(message = "") {
 
   username.focus();
 }
+
 
 function takeFlash() {
   try {

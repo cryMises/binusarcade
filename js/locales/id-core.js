@@ -130,4 +130,41 @@ export default {
   "Couldn't start the game download from {host}. The browser blocked the file request (CORS) or the connection dropped.":
     "Gagal memulai unduhan game dari {host}. Browser memblokir permintaan file (CORS) atau koneksi terputus.",
   Player: "Pemain",
+
+  /* Trial / guest play */
+  "Try one game": "Coba satu game",
+  "No login needed": "Tanpa perlu masuk",
+  "No login needed. Progress won't be saved.": "Tanpa perlu masuk. Progres tidak akan disimpan.",
+  "Sign in for the full library": "Masuk untuk library lengkap",
+  "Loading the trial game…": "Memuat game percobaan…",
+  "Registration is currently closed. Ask the admin for access.":
+    "Pendaftaran sedang ditutup. Minta akses ke admin.",
+  "Press START to load the trial game in your browser.":
+    "Tekan START untuk memuat game percobaan di browser kamu.",
+  "Runs in your browser. Nothing is installed on your phone.":
+    "Berjalan di browser kamu. Tidak ada yang dipasang di ponselmu.",
+  "START GAME": "MULAI MAIN",
+  "Preparing the emulator…": "Menyiapkan emulator…",
+  "Fetching the game…": "Mengambil game…",
+  "Fetching…": "Mengambil…",
+  "Downloaded. Tap start inside the player if it asks.":
+    "Terunduh. Ketuk mulai di dalam pemutar jika diminta.",
+  "Engine ready. Start the game.": "Mesin siap. Mulai game-nya.",
+  "Playing. Trial mode — progress won't be saved.":
+    "Sedang main. Mode percobaan — progres tidak akan disimpan.",
+  "Trial mode — progress won't be saved.": "Mode percobaan — progres tidak akan disimpan.",
+  "Download cancelled.": "Unduhan dibatalkan.",
+  "Couldn't download that game.": "Gagal mengunduh game itu.",
+  "BIOS wasn't available. Some games may not boot without one.":
+    "BIOS tidak tersedia. Beberapa game mungkin tidak bisa jalan tanpanya.",
+  "The emulator hit a snag.": "Emulator mengalami masalah.",
+  "Emulator update.": "Pembaruan emulator.",
+  "Waiting to start…": "Menunggu untuk mulai…",
+  "Nintendo DS touch screen works best with a mouse or stylus.":
+    "Layar sentuh Nintendo DS paling nyaman dengan mouse atau stylus.",
+  "Game download": "Unduhan game",
+  "{received} downloaded": "{received} terunduh",
+  "{received} of {total} ({pct}%)": "{received} dari {total} ({pct}%)",
+  "{name} emulator": "Emulator {name}",
+  "/platforms": "/platforms",
 };

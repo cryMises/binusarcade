@@ -70,4 +70,38 @@ export default {
   "No access yet.": "Belum ada akses.",
   "This shelf is for RomM admins. Your account doesn't have the admin role, so the door stays shut.":
     "Rak ini untuk admin RomM. Akunmu tidak punya peran admin, jadi pintunya tetap tertutup.",
+
+  /* Trial & registration settings (admin) */
+  "Trial and registration": "Percobaan dan pendaftaran",
+  "Control the login page trial and self-registration. Trial play works only when RomM kiosk mode allows anonymous access.":
+    "Atur game percobaan dan pendaftaran mandiri di halaman masuk. Game percobaan hanya berfungsi saat mode kiosk RomM mengizinkan akses anonim.",
+  "Loading settings…": "Memuat pengaturan…",
+  "Settings loaded.": "Pengaturan dimuat.",
+  "Couldn't load settings.": "Gagal memuat pengaturan.",
+  "Show trial game on login": "Tampilkan game percobaan di halaman masuk",
+  "Allow self-registration": "Izinkan pendaftaran mandiri",
+  "Trial game": "Game percobaan",
+  "No trial game selected": "Belum ada game percobaan dipilih",
+  "No trial game selected. Pick a game below and save.":
+    "Belum ada game percobaan dipilih. Pilih game di bawah lalu simpan.",
+  "Game ID: {id}": "ID game: {id}",
+  "Selected game details will load after save/reload if accessible.":
+    "Detail game terpilih akan dimuat setelah disimpan/muat ulang jika dapat diakses.",
+  "Search games to set as trial": "Cari game untuk dijadikan percobaan",
+  "Search": "Cari",
+  "Searching…": "Mencari…",
+  "No games found.": "Game tidak ditemukan.",
+  "Search failed.": "Pencarian gagal.",
+  "Trial game selected.": "Game percobaan dipilih.",
+  Clear: "Hapus",
+  "Save settings": "Simpan pengaturan",
+  "Pick a trial game before enabling trial.":
+    "Pilih game percobaan sebelum mengaktifkan percobaan.",
+  "Settings saved.": "Pengaturan disimpan.",
+  "Couldn't save settings.": "Gagal menyimpan pengaturan.",
+  "Saved. Login page will use these settings.":
+    "Tersimpan. Halaman masuk akan memakai pengaturan ini.",
+  "Stock RomM": "RomM asli",
+  "Server administration stays in stock RomM, where permissions are enforced.":
+    "Administrasi server tetap di RomM asli, tempat izin dijaga.",
 };

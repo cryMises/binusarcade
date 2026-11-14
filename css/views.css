@@ -2304,6 +2304,218 @@ a.stat-card:hover {
   line-height: 1.3;
 }
 
+/* ---------- Trial (login + guest) ---------- */
+
+.login-trial {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  display: grid;
+  gap: 10px;
+}
+
+.login-trial-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trial-game {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trial-cover,
+.trial-cover-sm {
+  width: 56px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--toplayer);
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.trial-cover-sm {
+  width: 44px;
+}
+
+.trial-game-copy,
+.trial-pick-copy,
+.trial-result-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.trial-name {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trial-view .trial-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  backdrop-filter: blur(8px);
+}
+
+.trial-topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trial-hero,
+.trial-stage {
+  max-width: 720px;
+  margin: 16px auto;
+}
+
+.trial-card {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.trial-cover-lg {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--toplayer);
+}
+
+.trial-card-copy {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.trial-status {
+  margin-top: 10px;
+}
+
+.trial-player {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 320px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #000;
+  overflow: hidden;
+}
+
+.trial-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.trial-progress {
+  margin: 8px 0;
+  display: grid;
+  gap: 4px;
+}
+
+.trial-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 120ms linear;
+}
+
+@media (max-width: 640px) {
+  .trial-card {
+    grid-template-columns: 100px 1fr;
+  }
+}
+
+/* ---------- Admin trial settings ---------- */
+
+.admin-settings-grid {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.toggle-row .switch-input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary);
+}
+
+.admin-trial-search {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.admin-trial-search .input {
+  flex: 1;
+}
+
+.admin-trial-results {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.trial-result,
+.trial-pick.trial-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: inherit;
+  text-align: left;
+}
+
+.trial-result {
+  cursor: pointer;
+}
+
+.trial-result:hover {
+  border-color: var(--line-strong, var(--primary));
+  background: var(--toplayer);
+}
+
+.section-subhead {
+  font-size: 1rem;
+  margin: 14px 0 6px;
+}
+
 /* ---------- Language switch placement ---------- */
 
 .topbar .lang-switch {

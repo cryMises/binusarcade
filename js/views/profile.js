@@ -10,10 +10,12 @@ import {
 } from "../api.js";
 import {
   clear,
+  cover,
   el,
   icon,
   cartridgeMini,
   langSwitch,
+  loadingLine,
   siteFooter,
   toast,
 } from "../components.js";
@@ -21,6 +23,8 @@ import {
   stockAccountUrl,
   stockAdminUrl,
   ROMM_ORIGIN,
+  normalizePlatform,
+  shortPlatformLabel,
 } from "../config.js";
 import { logout, userInitials, userLabel } from "../auth.js";
 import { t } from "../i18n.js";
@@ -378,51 +382,262 @@ export function adminView() {
   const admin = isAdmin(session);
   const root = el("div", { class: "view wrap" });
 
-  root.append(
-    admin
-      ? el(
-          "section",
-          { class: "block stub-card" },
-          el("div", { class: "eyebrow" }, t("This area is for admins.")),
-          el("h1", { class: "marker" }, t("Admin console")),
-          el(
-            "p",
-            { class: "note" },
-            t(
-              "The v1 app deliberately doesn't clone RomM's admin screens. Server administration stays in stock RomM, where permissions are enforced.",
-            ),
-          ),
-          el(
-            "div",
-            { class: "stub-actions" },
-            el(
-              "a",
-              { class: "btn btn-keycap btn-mint", href: stockAdminUrl(), target: "_blank", rel: "noopener noreferrer" },
-              t("Open RomM admin"),
-              icon("external", 16),
-            ),
-            el("a", { class: "btn btn-keycap-sm btn-ghost", href: "#/me" }, t("Back to Me")),
-          ),
-        )
-      : el(
-          "section",
-          { class: "block stub-card" },
-          el("div", { class: "eyebrow" }, t("Members only")),
-          el("h1", { class: "marker" }, t("No access yet.")),
-          el(
-            "p",
-            { class: "note" },
-            t(
-              "This shelf is for RomM admins. Your account doesn't have the admin role, so the door stays shut.",
-            ),
-          ),
-          el(
-            "div",
-            { class: "stub-actions" },
-            el("a", { class: "btn btn-keycap btn-yellow", href: "#/me" }, t("Back to Me")),
+  if (!admin) {
+    root.append(
+      el(
+        "section",
+        { class: "block stub-card" },
+        el("div", { class: "eyebrow" }, t("Members only")),
+        el("h1", { class: "marker" }, t("No access yet.")),
+        el(
+          "p",
+          { class: "note" },
+          t(
+            "This shelf is for RomM admins. Your account doesn't have the admin role, so the door stays shut.",
           ),
         ),
+        el(
+          "div",
+          { class: "stub-actions" },
+          el("a", { class: "btn btn-keycap btn-yellow", href: "#/me" }, t("Back to Me")),
+        ),
+      ),
+      siteFooter(),
+    );
+    return root;
+  }
+
+  const status = el("div", { class: "admin-settings-status" }, loadingLine(t("Loading settings…")));
+  const currentGame = el("div", { class: "admin-trial-current" });
+  const searchInput = el("input", {
+    class: "input",
+    type: "search",
+    placeholder: t("Search games to set as trial"),
+    "aria-label": t("Search games"),
+  });
+  const searchBtn = el("button", { class: "btn btn-keycap-sm btn-primary", type: "button" }, icon("search", 16), t("Search"));
+  const results = el("div", { class: "admin-trial-results" });
+  const trialToggle = el("input", { type: "checkbox", class: "switch-input", id: "trial-enabled" });
+  const regToggle = el("input", { type: "checkbox", class: "switch-input", id: "registration-enabled", checked: true });
+  const saveBtn = el("button", { class: "btn btn-keycap btn-mint", type: "button" }, icon("save", 18), t("Save settings"));
+  let selectedGame = null;
+  let settings = { trialGameId: null, trialEnabled: false, registrationEnabled: true };
+  let disposed = false;
+
+  function gameLabel(rom) {
+    if (!rom) return t("No trial game selected");
+    const platform = shortPlatformLabel(normalizePlatform(rom.platform_slug || rom.platform_fs_slug || ""));
+    return `${rom.name || rom.title || t("Game")} · ${platform}`;
+  }
+
+  function renderCurrent() {
+    if (!selectedGame && !settings.trialGameId) {
+      currentGame.replaceChildren(
+        el("p", { class: "note" }, t("No trial game selected. Pick a game below and save.")),
+      );
+      return;
+    }
+    const rom = selectedGame;
+    if (!rom) {
+      currentGame.replaceChildren(
+        el("div", { class: "trial-mini" }, el("div", {}, el("strong", {}, t("Game ID: {id}", { id: settings.trialGameId }))), el("p", { class: "note" }, t("Selected game details will load after save/reload if accessible."))),
+      );
+      return;
+    }
+    currentGame.replaceChildren(
+      el(
+        "div",
+        { class: "trial-pick trial-current" },
+        el("img", { class: "trial-cover-sm", src: cover(rom), alt: "" }),
+        el(
+          "div",
+          { class: "trial-pick-copy" },
+          el("strong", {}, rom.name || rom.title || t("Game")),
+          el("div", { class: "note" }, gameLabel(rom)),
+        ),
+        el(
+          "button",
+          { class: "btn btn-keycap-sm btn-ghost", type: "button", on: { click: () => { selectedGame = null; settings.trialGameId = null; renderCurrent(); } } },
+          t("Clear"),
+        ),
+      ),
+    );
+  }
+
+  async function load() {
+    try {
+      settings = await api.settings();
+    } catch (error) {
+      status.replaceChildren(el("p", { class: "note" }, error?.detail || error?.message || t("Couldn't load settings.")));
+      renderCurrent();
+      return;
+    }
+    if (disposed) return;
+    trialToggle.checked = Boolean(settings.trialEnabled);
+    regToggle.checked = settings.registrationEnabled !== false;
+    status.replaceChildren(el("p", { class: "note" }, t("Settings loaded.")));
+    if (settings.trialGameId) {
+      try {
+        selectedGame = await api.rom(settings.trialGameId);
+      } catch {
+        selectedGame = null;
+      }
+    } else {
+      selectedGame = null;
+    }
+    if (disposed) return;
+    renderCurrent();
+  }
+
+  async function search() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    results.replaceChildren(loadingLine(t("Searching…")));
+    try {
+      const data = await api.roms({ search: q, limit: 12, with_total: true });
+      if (disposed) return;
+      const items = data.items || [];
+      if (!items.length) {
+        results.replaceChildren(el("p", { class: "note" }, t("No games found.")));
+        return;
+      }
+      results.replaceChildren(
+        ...items.map((rom) =>
+          el(
+            "button",
+            {
+              class: "trial-result",
+              type: "button",
+              on: {
+                click: () => {
+                  selectedGame = rom;
+                  settings.trialGameId = rom.id;
+                  renderCurrent();
+                  toast(t("Trial game selected."), { tone: "success" });
+                },
+              },
+            },
+            el("img", { class: "trial-cover-sm", src: cover(rom), alt: "" }),
+            el(
+              "span",
+              { class: "trial-result-copy" },
+              el("strong", {}, rom.name || rom.title || t("Game")),
+              el("span", { class: "note" }, gameLabel(rom)),
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (disposed) return;
+      results.replaceChildren(el("p", { class: "note" }, error?.detail || error?.message || t("Search failed.")));
+    }
+  }
+
+  searchBtn.addEventListener("click", () => void search());
+  searchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void search();
+    }
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    try {
+      const next = {
+        trialGameId: selectedGame?.id ?? settings.trialGameId ?? null,
+        trialEnabled: trialToggle.checked,
+        registrationEnabled: regToggle.checked,
+      };
+      if (next.trialEnabled && !next.trialGameId) {
+        toast(t("Pick a trial game before enabling trial."), { tone: "warn" });
+        return;
+      }
+      settings = await api.saveSettings(next);
+      trialToggle.checked = Boolean(settings.trialEnabled);
+      regToggle.checked = settings.registrationEnabled !== false;
+      toast(t("Settings saved."), { tone: "success" });
+      status.replaceChildren(el("p", { class: "note" }, t("Saved. Login page will use these settings.")));
+    } catch (error) {
+      toast(error?.detail || error?.message || t("Couldn't save settings."), { tone: "error" });
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  root.append(
+    el(
+      "section",
+      { class: "block" },
+      el("div", { class: "eyebrow" }, t("Admin")),
+      el("h1", { class: "marker" }, t("Trial and registration")),
+      el(
+        "p",
+        { class: "note" },
+        t("Control the login page trial and self-registration. Trial play works only when RomM kiosk mode allows anonymous access."),
+      ),
+      status,
+      el(
+        "div",
+        { class: "admin-settings-grid" },
+        el(
+          "label",
+          { class: "toggle-row", for: "trial-enabled" },
+          trialToggle,
+          el("span", {}, t("Show trial game on login")),
+        ),
+        el(
+          "label",
+          { class: "toggle-row", for: "registration-enabled" },
+          regToggle,
+          el("span", {}, t("Allow self-registration")),
+        ),
+      ),
+      el("h2", { class: "section-subhead" }, t("Trial game")),
+      currentGame,
+      el(
+        "div",
+        { class: "admin-trial-search" },
+        searchInput,
+        searchBtn,
+      ),
+      results,
+      el("div", { class: "stub-actions" }, saveBtn),
+    ),
+    el(
+      "section",
+      { class: "block stub-card" },
+      el("div", { class: "eyebrow" }, t("Stock RomM")),
+      el("h2", { class: "marker marker-sm" }, t("Admin console")),
+      el(
+        "p",
+        { class: "note" },
+        t(
+          "Server administration stays in stock RomM, where permissions are enforced.",
+        ),
+      ),
+      el(
+        "div",
+        { class: "stub-actions" },
+        el(
+          "a",
+          { class: "btn btn-keycap btn-mint", href: stockAdminUrl(), target: "_blank", rel: "noopener noreferrer" },
+          t("Open RomM admin"),
+          icon("external", 16),
+        ),
+        el("a", { class: "btn btn-keycap-sm btn-ghost", href: "#/me" }, t("Back to Me")),
+      ),
+    ),
     siteFooter(),
   );
-  return root;
+
+  renderCurrent();
+  void load();
+
+  return {
+    el: root,
+    cleanup() {
+      disposed = true;
+    },
+  };
 }

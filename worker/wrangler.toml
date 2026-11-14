@@ -2,6 +2,16 @@ name = "binusarcade-signup-relay"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
+# KV namespace for public app settings (trial game, registration toggle).
+# Create/bind with:
+#   wrangler kv namespace create SETTINGS
+#   wrangler kv namespace create SETTINGS --preview
+# Then replace the id/preview_id values below with the ones Wrangler prints.
+[[kv_namespaces]]
+binding = "SETTINGS"
+id = "REPLACE_WITH_SETTINGS_KV_ID"
+preview_id = "REPLACE_WITH_SETTINGS_PREVIEW_KV_ID"
+
 [vars]
 ROMM_ORIGIN = "https://crymises-music.centralindia.cloudapp.azure.com:8449"
 APP_PUBLIC_URL = "https://crymises.github.io/binusarcade"

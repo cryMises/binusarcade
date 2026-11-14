@@ -27,7 +27,8 @@ for (const file of [...jsFiles, swFile, workerFile]) {
 
 const config = await import(pathToFileURL(join(root, "js/config.js")));
 const api = await import(pathToFileURL(join(root, "js/api.js")));
-const { SignupRelayDO } = await import(pathToFileURL(workerFile));
+const workerMod = await import(pathToFileURL(workerFile));
+const { SignupRelayDO } = workerMod;
 
 /* Exercise SignupRelayDO against real in-memory SQLite + mocked RomM fetch. */
 async function checkRelayDO() {
@@ -207,7 +208,92 @@ for (const key of conflictingKeys) console.error(`conflicting locale translation
 for (const [key] of emptyValues) console.error(`empty locale value: ${key}`);
 for (const [key, value] of placeholderMismatch) console.error(`placeholder mismatch: ${key} -> ${value}`);
 
+async function checkSettings() {
+  const store = new Map();
+  const kv = {
+    async get(key, type) {
+      if (!store.has(key)) return null;
+      const value = store.get(key);
+      return type === "json" ? JSON.parse(value) : value;
+    },
+    async put(key, value) {
+      store.set(key, String(value));
+    },
+  };
+
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const target = String(url);
+    const auth = init.headers?.Authorization || init.headers?.authorization || "";
+    if (target.endsWith("/api/users/me")) {
+      if (auth === "Bearer admin-jwt") {
+        return new Response(JSON.stringify({ id: 1, role: "admin" }), { status: 200 });
+      }
+      if (auth === "Bearer user-jwt") {
+        return new Response(JSON.stringify({ id: 2, role: "user" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ detail: "Unauthorized" }), { status: 401 });
+    }
+    throw new Error(`Unexpected fetch in settings test: ${target}`);
+  };
+
+  try {
+    const env = {
+      SETTINGS: kv,
+      ROMM_ORIGIN: "https://romm.test",
+      ALLOWED_ORIGINS: "https://crymises.github.io",
+      SIGNUP_RELAY: { idFromName: () => "x", get: () => ({ fetch: () => new Response("{}", { status: 404 }) }) },
+    };
+    const call = (path, { method = "GET", body, token } = {}) =>
+      workerMod.default.fetch(
+        new Request(`https://relay.test${path}`, {
+          method,
+          headers: {
+            Origin: "https://crymises.github.io",
+            ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        }),
+        env,
+        {},
+      );
+
+    const defaultsRes = await call("/settings");
+    const defaults = await defaultsRes.json();
+    const noAuth = await call("/settings", { method: "POST", body: { trialEnabled: true } });
+    const nonAdmin = await call("/settings", { method: "POST", body: { trialEnabled: true }, token: "user-jwt" });
+    const adminSave = await call("/settings", {
+      method: "POST",
+      body: { trialEnabled: true, trialGameId: 42, registrationEnabled: false },
+      token: "admin-jwt",
+    });
+    const saved = await adminSave.json();
+    const after = await (await call("/settings")).json();
+
+    return {
+      defaultsOk:
+        defaultsRes.status === 200 &&
+        defaults.trialGameId === null &&
+        defaults.trialEnabled === false &&
+        defaults.registrationEnabled === true,
+      postNeedsAuth: noAuth.status === 401 || noAuth.status === 403,
+      postBlocksNonAdmin: nonAdmin.status === 403,
+      adminCanSave:
+        adminSave.status === 200 &&
+        saved.trialEnabled === true &&
+        saved.trialGameId === 42 &&
+        saved.registrationEnabled === false &&
+        after.trialGameId === 42 &&
+        after.registrationEnabled === false,
+    };
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+}
+
 const relayChecks = await checkRelayDO();
+const settingsChecks = await checkSettings();
 
 /* Stay signed in: session routing between localStorage and sessionStorage. */
 function fakeStorage() {
@@ -278,6 +364,9 @@ const checks = [
   ["Stock URL", config.stockRomUrl(7).endsWith("/rom/7")],
   ["Signup invite URL", config.signupInviteUrl("abc.123") === `${config.APP_PUBLIC_URL}/?token=abc.123#/register`],
   ["Signup claim URL", config.signupClaimUrl("c123") === `${config.APP_PUBLIC_URL}/?claim=c123#/register`],
+  ["Settings API method", typeof api.api.settings === "function"],
+  ["Save settings API method", typeof api.api.saveSettings === "function"],
+  ["Public rom API method", typeof api.api.romPublic === "function"],
   ["Register API method", typeof api.api.register === "function"],
   ["Invite link API method", typeof api.api.createInviteLink === "function"],
   ["Users API method", typeof api.api.users === "function"],
@@ -306,6 +395,11 @@ const checks = [
   ["Relay DO rejects reused QR with 410", relayChecks.reuseRejected410],
   ["Relay DO proxies register with CSRF cookie", relayChecks.registerProxiesCsrf],
   ["Relay DO disable clears and blocks claims", relayChecks.disableClearsAndBlocks],
+
+  ["Worker settings defaults", settingsChecks.defaultsOk],
+  ["Worker settings POST requires auth", settingsChecks.postNeedsAuth],
+  ["Worker settings POST blocks non-admin", settingsChecks.postBlocksNonAdmin],
+  ["Worker settings admin can save", settingsChecks.adminCanSave],
 ];
 
 let failed = 0;

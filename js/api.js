@@ -554,18 +554,7 @@ function hostOf(url) {
   }
 }
 
-export async function downloadBlob(url, { signal, onProgress } = {}) {
-  let response;
-  try {
-    response = await fetchWithAuth(url, { signal });
-  } catch (error) {
-    if (isAbortError(error) || error instanceof ApiError) throw error;
-    throw new ApiError(
-      t("Couldn't start the game download from {host}. The browser blocked the file request (CORS) or the connection dropped.", { host: hostOf(url) }),
-      { status: 0, cause: error, retryable: true },
-    );
-  }
-
+async function readDownloadBlob(response, { signal, onProgress } = {}) {
   const total = Number(response.headers.get("content-length") || 0);
   const type = response.headers.get("content-type") || "application/octet-stream";
 
@@ -588,7 +577,7 @@ export async function downloadBlob(url, { signal, onProgress } = {}) {
       onProgress?.({ received, total, done: false });
     }
   } catch (error) {
-    if (isAbortError(error)) throw error;
+    if (isAbortError(error) || signal?.aborted) throw error;
     throw new ApiError(
       `The game download stopped after ${received} bytes. Check your connection and try again.`,
       { status: 0, cause: error, retryable: true },
@@ -600,6 +589,48 @@ export async function downloadBlob(url, { signal, onProgress } = {}) {
   const blob = new Blob(chunks, { type });
   onProgress?.({ received, total: total || received, done: true });
   return blob;
+}
+
+export async function downloadBlob(url, { signal, onProgress } = {}) {
+  let response;
+  try {
+    response = await fetchWithAuth(url, { signal });
+  } catch (error) {
+    if (isAbortError(error) || error instanceof ApiError) throw error;
+    throw new ApiError(
+      t("Couldn't start the game download from {host}. The browser blocked the file request (CORS) or the connection dropped.", { host: hostOf(url) }),
+      { status: 0, cause: error, retryable: true },
+    );
+  }
+  return readDownloadBlob(response, { signal, onProgress });
+}
+
+/* Token-less download for kiosk guest mode (no Authorization, credentials omit). */
+export async function publicDownloadBlob(url, { signal, onProgress } = {}) {
+  let response;
+  try {
+    response = await fetch(url, {
+      signal,
+      credentials: "omit",
+      mode: "cors",
+      cache: "no-store",
+    });
+  } catch (error) {
+    if (isAbortError(error) || error instanceof ApiError) throw error;
+    throw new ApiError(
+      t("Couldn't start the game download from {host}. The browser blocked the file request (CORS) or the connection dropped.", { host: hostOf(url) }),
+      { status: 0, cause: error, retryable: true },
+    );
+  }
+  if (!response.ok) {
+    throw errorFor(response.status, await parseError(response));
+  }
+  return readDownloadBlob(response, { signal, onProgress });
+}
+
+/* Token-less RomM API request (succeeds only when server kiosk/guest access allows). */
+export function publicRequest(path, options = {}) {
+  return rawRequest(path, { ...options, auth: false, retry: false });
 }
 
 /* ------------------------------------------------------------------ */
@@ -901,6 +932,29 @@ export const api = {
 
   relayRotate({ signal } = {}) {
     return relayRequest("/admin/rotate", { method: "POST", auth: true, signal });
+  },
+
+  settings({ signal } = {}) {
+    return relayRequest("/settings", { signal, timeout: 10_000 });
+  },
+
+  saveSettings(settings, { signal } = {}) {
+    return relayRequest("/settings", {
+      method: "POST",
+      body: settings,
+      auth: true,
+      signal,
+      timeout: 12_000,
+    });
+  },
+
+  /* Token-less (kiosk guest) helpers — only work when server allows anonymous access. */
+  romPublic(id, { signal } = {}) {
+    return publicRequest(`/roms/${encodeURIComponent(id)}`, { signal, timeout: 12_000 });
+  },
+
+  romFilesPublic(id, { signal } = {}) {
+    return publicRequest(`/roms/${encodeURIComponent(id)}/files`, { signal, timeout: 12_000 });
   },
 };
 

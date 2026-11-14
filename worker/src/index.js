@@ -12,6 +12,12 @@ const CLAIM_COOLDOWN_MS = 1_500;
 const USED_RETENTION_MS = 48 * 3_600_000;
 const TOKEN_SKEW_MS = 30_000;
 const SERVICE_SCOPES = "me.read users.read users.write";
+const SETTINGS_KEY = "app-settings";
+const DEFAULT_SETTINGS = {
+  trialGameId: null,
+  trialEnabled: false,
+  registrationEnabled: true,
+};
 
 function parseAllowedOrigins(raw) {
   return new Set(
@@ -83,6 +89,72 @@ function extractCsrfCookie(headers) {
   return "";
 }
 
+function normalizeSettings(input = {}) {
+  const id = input?.trialGameId;
+  let trialGameId = null;
+  if (id !== null && id !== undefined && id !== "") {
+    const n = Number(id);
+    trialGameId = Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+  }
+  return {
+    trialGameId,
+    trialEnabled: Boolean(input?.trialEnabled),
+    registrationEnabled:
+      typeof input?.registrationEnabled === "boolean"
+        ? input.registrationEnabled
+        : DEFAULT_SETTINGS.registrationEnabled,
+  };
+}
+
+async function readSettings(env) {
+  try {
+    const kv = env?.SETTINGS;
+    if (!kv || typeof kv.get !== "function") return { ...DEFAULT_SETTINGS };
+    const raw = await kv.get(SETTINGS_KEY, "text");
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    return normalizeSettings(JSON.parse(raw));
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+async function writeSettings(env, next) {
+  const kv = env?.SETTINGS;
+  if (!kv || typeof kv.put !== "function") {
+    throw new Error("SETTINGS KV binding is missing. Bind a KV namespace named SETTINGS.");
+  }
+  const value = normalizeSettings(next);
+  await kv.put(SETTINGS_KEY, JSON.stringify(value));
+  return value;
+}
+
+async function verifyAdminRequest(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  if (!auth.startsWith("Bearer ")) {
+    return { ok: false, status: 401, detail: "Missing admin bearer token." };
+  }
+  const romm = String(env?.ROMM_ORIGIN || "").replace(/\/+$/, "");
+  let res;
+  try {
+    res = await fetch(`${romm}/api/users/me`, {
+      headers: { Authorization: auth, Accept: "application/json" },
+    });
+  } catch {
+    return { ok: false, status: 502, detail: "Couldn't reach RomM to verify admin." };
+  }
+  if (res.status === 401) {
+    return { ok: false, status: 401, detail: "Admin session expired." };
+  }
+  if (!res.ok) {
+    return { ok: false, status: 403, detail: "Admin verification failed." };
+  }
+  const user = await res.json();
+  if (user?.role !== "admin") {
+    return { ok: false, status: 403, detail: "Admin role required." };
+  }
+  return { ok: true, user };
+}
+
 export class SignupRelayDO {
   constructor(ctx, env) {
     this.ctx = ctx;
@@ -147,30 +219,7 @@ export class SignupRelayDO {
   }
 
   async verifyAdmin(request) {
-    const auth = request.headers.get("Authorization") || "";
-    if (!auth.startsWith("Bearer ")) {
-      return { ok: false, status: 401, detail: "Missing admin bearer token." };
-    }
-    const romm = String(this.env.ROMM_ORIGIN || "").replace(/\/+$/, "");
-    let res;
-    try {
-      res = await fetch(`${romm}/api/users/me`, {
-        headers: { Authorization: auth, Accept: "application/json" },
-      });
-    } catch {
-      return { ok: false, status: 502, detail: "Couldn't reach RomM to verify admin." };
-    }
-    if (res.status === 401) {
-      return { ok: false, status: 401, detail: "Admin session expired." };
-    }
-    if (!res.ok) {
-      return { ok: false, status: 403, detail: "Admin verification failed." };
-    }
-    const user = await res.json();
-    if (user?.role !== "admin") {
-      return { ok: false, status: 403, detail: "Admin role required." };
-    }
-    return { ok: true, user };
+    return verifyAdminRequest(request, this.env);
   }
 
   async getServiceToken({ forceRefresh = false } = {}) {
@@ -541,10 +590,37 @@ export class SignupRelayDO {
   }
 }
 
+async function handleSettings(request, env) {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  if (path !== "/settings") return null;
+
+  if (request.method === "GET") {
+    const settings = await readSettings(env);
+    return json(settings, 200, request, env);
+  }
+
+  if (request.method === "POST") {
+    const auth = await verifyAdminRequest(request, env);
+    if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, env);
+    const body = await readJsonBody(request);
+    const saved = await writeSettings(env, body);
+    return json(saved, 200, request, env);
+  }
+
+  return json({ detail: "Method not allowed." }, 405, request, env);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+    }
+    try {
+      const settingsResponse = await handleSettings(request, env);
+      if (settingsResponse) return settingsResponse;
+    } catch (error) {
+      return json({ detail: error?.message || "Settings error." }, 502, request, env);
     }
     const id = env.RELAY.idFromName("global");
     return env.RELAY.get(id).fetch(request);
