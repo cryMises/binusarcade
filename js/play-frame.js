@@ -91,6 +91,39 @@ function sendBytes(kind, value) {
 }
 
 function attachEjsHooks() {
+  /* Sample the canvas from inside the player document. Screenshot tools can
+   * show a black iframe even when the canvas has pixels, so the host logs
+   * this number to tell a renderer problem from a compositor problem. */
+  window.frameProbe = () =>
+    new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        const canvas = document.querySelector("canvas.ejs_canvas");
+        if (!canvas?.width) {
+          resolve(null);
+          return;
+        }
+        try {
+          const probe = document.createElement("canvas");
+          probe.width = 48;
+          probe.height = 48;
+          const ctx = probe.getContext("2d", { willReadFrequently: true });
+          ctx.drawImage(canvas, 0, 0, 48, 48);
+          const data = ctx.getImageData(0, 0, 48, 48).data;
+          let sum = 0;
+          let dark = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            const luma = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            sum += luma;
+            if (luma < 8) dark += 1;
+          }
+          const pixels = data.length / 4;
+          resolve({ mean: Math.round(sum / pixels), darkRatio: +(dark / pixels).toFixed(3) });
+        } catch (error) {
+          resolve({ error: error?.name || "probe failed" });
+        }
+      });
+    });
+
   window.EJS_onGameStart = () => {
     try {
       if (window.EJS_emulator) {

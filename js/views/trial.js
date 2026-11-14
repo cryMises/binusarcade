@@ -148,8 +148,14 @@ export function trialView(ctx, initial = null) {
         buffer: `${canvas.width}x${canvas.height}`,
         css: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
         display: getComputedStyle(canvas).display,
+        paused: iframeWindow?.EJS_emulator?.paused ?? null,
         webglLost: gl?.isContextLost?.() ?? null,
       });
+      iframeWindow?.frameProbe?.()
+        ?.then((pixels) => {
+          if (pixels) console.info("[trial] player pixels", pixels);
+        })
+        .catch(() => {});
     } catch (error) {
       console.info("[trial] player check skipped", error?.name);
     }
