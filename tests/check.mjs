@@ -98,6 +98,7 @@ async function checkRelayDO() {
   };
 
   try {
+    let regEnabled = true;
     const relay = new SignupRelayDO(
       { storage: { sql } },
       {
@@ -106,6 +107,11 @@ async function checkRelayDO() {
         ALLOWED_ORIGINS: "https://crymises.github.io",
         ROMM_SERVICE_USERNAME: "svc",
         ROMM_SERVICE_PASSWORD: "pw",
+        SETTINGS: {
+          async get() {
+            return JSON.stringify({ registrationEnabled: regEnabled });
+          },
+        },
       },
     );
 
@@ -145,6 +151,16 @@ async function checkRelayDO() {
     const disabledAfter = await disableRes.json();
     const claimDisabledRes = await call("/claim", { method: "POST", body: { claimId: pub2.claimId } });
 
+    await call("/admin/state", { method: "POST", body: { enabled: true }, token: "admin-jwt" });
+    const activePub = await (await call("/invite")).json();
+    regEnabled = false;
+    const closedInvite = await (await call("/invite")).json();
+    const closedClaim = await call("/claim", { method: "POST", body: { claimId: activePub.claimId } });
+    const closedRegister = await call("/register", {
+      method: "POST",
+      body: { username: "friend2", email: "friend2@example.com", password: "password123", token: "romm-invite-2" },
+    });
+
     return {
       disabledDefault: disabledRes.enabled === false && !disabledRes.claimId,
       nonAdminBlocked: nonAdminRes.status === 403,
@@ -162,6 +178,11 @@ async function checkRelayDO() {
       reuseRejected410: reuseRes.status === 410,
       registerProxiesCsrf: regBadRes.status === 400 && regOkRes.status === 201,
       disableClearsAndBlocks: disabledAfter.enabled === false && claimDisabledRes.status === 403,
+      closedRegistrationBlocksAll:
+        closedInvite.enabled === false &&
+        !closedInvite.claimId &&
+        closedClaim.status === 403 &&
+        closedRegister.status === 403,
     };
   } finally {
     globalThis.fetch = origFetch;
@@ -333,7 +354,10 @@ async function checkTrialProxy() {
       }
       if (target.includes("/assets/romm/resources/roms/1/42/cover/small.png") || target.endsWith("/covers/small.png")) {
         if (auth !== "Bearer worker-secret") return new Response("unauthorized", { status: 401 });
-        return new Response("PNGDATA", { status: 200, headers: { "Content-Type": "image/png" } });
+        return new Response("PNGDATA", {
+          status: 200,
+          headers: { "Content-Type": "image/png", "Set-Cookie": "romm_session=secret; Path=/" },
+        });
       }
       if (target.startsWith("https://romm.test/api/roms/42/content/trial.gba")) {
         if (auth !== "Bearer worker-secret") return new Response("unauthorized", { status: 401 });
@@ -385,6 +409,13 @@ async function checkTrialProxy() {
     const contentRes = await call("/trial/content?file_name=trial.gba&file_ids=7", { env: okEnv });
     const contentBody = await contentRes.text();
     const wrongFile = await call("/trial/content", { env: okEnv });
+    const traversalFile = await call("/trial/content?file_name=../../users", { env: okEnv });
+    const unknownFile = await call("/trial/content?file_name=evil.gba", { env: okEnv });
+    const badFileId = await call("/trial/content?file_name=trial.gba&file_ids=999", { env: okEnv });
+    const emptyCorsRes = await call("/settings", {
+      env: { ...okEnv, ALLOWED_ORIGINS: "" },
+      headers: { Origin: "https://evil.example" },
+    });
     const postMeta = await call("/trial/meta", { method: "POST", env: okEnv });
     const otherPath = await call("/trial/roms/42", { env: okEnv });
     const allSecret = rommCalls.length > 0 && rommCalls.every((c) => c.auth === "Bearer worker-secret");
@@ -406,9 +437,13 @@ async function checkTrialProxy() {
         String(meta.coverUrl).endsWith("/trial/cover") &&
         meta.files?.[0]?.file_name === "trial.gba",
       coverOk: coverRes.status === 200 && coverBody === "PNGDATA",
+      coverStripsCookie: coverRes.headers.get("set-cookie") === null,
       _debug: { coverStatus: coverRes.status, coverBody: String(coverBody).slice(0, 20), calls: rommCalls.map((c) => c.target) },
       contentOk: contentRes.status === 200 && contentBody === "ROMBYTES",
       contentMissingFile400: wrongFile.status === 400,
+      contentBlocksTraversalAndMismatch:
+        traversalFile.status === 400 && unknownFile.status === 400 && badFileId.status === 400,
+      corsFailsClosed: emptyCorsRes.headers.get("access-control-allow-origin") === null,
       writeBlocked403: postMeta.status === 403,
       otherPathBlocked403: otherPath.status === 403,
       rommAuthAndPaths: allSecret && onlyAllowed,
@@ -421,6 +456,58 @@ async function checkTrialProxy() {
 const relayChecks = await checkRelayDO();
 const settingsChecks = await checkSettings();
 const trialProxyChecks = await checkTrialProxy();
+
+/* Components XSS / link URL sanitization checks. */
+const domChecks = await (async () => {
+  const prevDoc = globalThis.document;
+  const prevNode = globalThis.Node;
+  class FakeNode {
+    constructor(tag) {
+      this.tag = tag;
+      this.attrs = {};
+      this.children = [];
+      this.textContent = "";
+      this.innerHTML = "";
+    }
+    setAttribute(k, v) {
+      this.attrs[k] = String(v);
+    }
+    append(...nodes) {
+      this.children.push(...nodes);
+    }
+  }
+  globalThis.Node = FakeNode;
+  globalThis.document = {
+    createElement: (tag) => new FakeNode(tag),
+    createTextNode: (text) => text,
+  };
+  try {
+    const components = await import(pathToFileURL(join(root, "js/components.js")));
+    const noHtml = components.el("div", { html: "<img onerror=alert(1)>", text: "safe" });
+    const badHref = components.el("a", { href: "java\tscript:alert(1)" });
+    const jsLink = components.link("javascript:alert(1)", {}, "x");
+    const protoLink = components.link("//evil.example/x", {}, "x");
+    const dataLink = components.link("data:text/html,hi", {}, "x");
+    const goodExt = components.link("https://example.com", {}, "x");
+    const goodHash = components.link("#/home", {}, "x");
+    return {
+      elDropsHtmlSink: noHtml.innerHTML === "" && noHtml.textContent === "safe",
+      elBlocksJsHref: badHref.attrs.href === "#",
+      linkBlocksUnsafeUrls:
+        jsLink.attrs.href === "#" &&
+        protoLink.attrs.href === "#" &&
+        dataLink.attrs.href === "#" &&
+        goodExt.attrs.href === "https://example.com" &&
+        goodExt.attrs.rel === "noopener noreferrer" &&
+        goodHash.attrs.href === "#/home",
+    };
+  } finally {
+    if (prevDoc === undefined) delete globalThis.document;
+    else globalThis.document = prevDoc;
+    if (prevNode === undefined) delete globalThis.Node;
+    else globalThis.Node = prevNode;
+  }
+})();
 
 /* Stay signed in: session routing between localStorage and sessionStorage. */
 function fakeStorage() {
@@ -542,6 +629,7 @@ const checks = [
   ["Relay DO rejects reused QR with 410", relayChecks.reuseRejected410],
   ["Relay DO proxies register with CSRF cookie", relayChecks.registerProxiesCsrf],
   ["Relay DO disable clears and blocks claims", relayChecks.disableClearsAndBlocks],
+  ["Relay DO closed registration blocks invite/claim/register", relayChecks.closedRegistrationBlocksAll],
 
   ["Worker settings defaults", settingsChecks.defaultsOk],
   ["Worker settings POST requires auth", settingsChecks.postNeedsAuth],
@@ -551,11 +639,17 @@ const checks = [
   ["Trial proxy 403 when disabled/missing", trialProxyChecks.disabled403],
   ["Trial proxy meta rewrites cover URL", trialProxyChecks.metaOk],
   ["Trial proxy streams cover", trialProxyChecks.coverOk],
+  ["Trial proxy strips set-cookie from upstream", trialProxyChecks.coverStripsCookie],
   ["Trial proxy streams content", trialProxyChecks.contentOk],
   ["Trial proxy content requires file_name", trialProxyChecks.contentMissingFile400],
+  ["Trial proxy blocks file_name traversal and file_ids mismatch", trialProxyChecks.contentBlocksTraversalAndMismatch],
+  ["Worker CORS fails closed when ALLOWED_ORIGINS is empty", trialProxyChecks.corsFailsClosed],
   ["Trial proxy blocks write methods", trialProxyChecks.writeBlocked403],
   ["Trial proxy blocks non-allowed paths", trialProxyChecks.otherPathBlocked403],
   ["Trial proxy uses secret and allowed RomM paths only", trialProxyChecks.rommAuthAndPaths],
+  ["Components el drops html sink", domChecks.elDropsHtmlSink],
+  ["Components el blocks javascript href", domChecks.elBlocksJsHref],
+  ["Components link restricts URL schemes", domChecks.linkBlocksUnsafeUrls],
 ];
 
 let failed = 0;

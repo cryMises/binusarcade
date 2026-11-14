@@ -19,7 +19,9 @@ import {
 import {
   EJS_CDN,
   EJS_LOADER,
+  EJS_LOADER_SRI,
   RUFFLE_CDN,
+  RUFFLE_SRI,
   colorForPlatform,
   defaultCoreFor,
   isRufflePlatform,
@@ -312,8 +314,10 @@ export function trialView(ctx, initial = null) {
         gameName: rom.fs_name_no_tags || rom.name || "Trial game",
         gameID: rom.id,
         loader: EJS_LOADER,
+        loaderIntegrity: EJS_LOADER_SRI,
         ejsData: EJS_CDN,
         ruffle: RUFFLE_CDN,
+        ruffleIntegrity: RUFFLE_SRI,
       });
 
       if (startButton) startButton.hidden = true;

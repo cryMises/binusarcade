@@ -30,11 +30,15 @@ function showMessage(text) {
   game.append(message);
 }
 
-function loadScript(src, label = "the emulator engine") {
+function loadScript(src, label = "the emulator engine", integrity = "") {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = src;
     script.async = true;
+    if (integrity) {
+      script.integrity = integrity;
+      script.crossOrigin = "anonymous";
+    }
     script.onload = () => resolve(script);
     script.onerror = () =>
       reject(new Error(`Could not load ${label} from ${hostOf(src)}.`));
@@ -212,7 +216,7 @@ async function bootEjs(config) {
 
   showMessage("Loading the emulator engine…");
   try {
-    await loadScript(config.loader, "the emulator engine");
+    await loadScript(config.loader, "the emulator engine", config.loaderIntegrity);
   } catch (error) {
     showMessage(`${error.message} Open the game in stock RomM if this keeps happening.`);
     throw error;
@@ -232,7 +236,7 @@ async function bootRuffle(config) {
     letterbox: "on",
     contextMenu: "on",
   };
-  await loadScript(config.ruffle, "the Flash player");
+  await loadScript(config.ruffle, "the Flash player", config.ruffleIntegrity);
   const ruffle = window.RufflePlayer.newest?.();
   if (!ruffle) throw new Error("Ruffle could not start in this browser.");
 

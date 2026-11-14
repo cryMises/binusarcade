@@ -665,8 +665,10 @@ export function registerView() {
   }
 
   if (initialToken) {
+    clearQueryParams();
     renderForm(initialToken);
   } else if (initialClaim) {
+    clearQueryParams();
     if (hasSignupRelay()) {
       void claimAndOpen(initialClaim);
     } else {

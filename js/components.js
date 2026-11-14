@@ -51,10 +51,13 @@ export function el(tag, attrs = {}, ...children) {
       }
     } else if (key === "props" && typeof value === "object") {
       Object.assign(node, value);
-    } else if (key === "html") {
-      node.innerHTML = value;
     } else if (key === "text") {
       node.textContent = value;
+    } else if (
+      key === "href" &&
+      /^(javascript|vbscript|data):/i.test(String(value).replace(/[\u0000-\u0020]+/g, ""))
+    ) {
+      node.setAttribute("href", "#");
     } else if (value === true) {
       node.setAttribute(key, "");
     } else {
@@ -106,11 +109,13 @@ export function icon(name, size = 22, label) {
 }
 
 export function link(href, attrs = {}, ...children) {
-  const isExternal = /^https?:/i.test(href);
+  const raw = String(href || "").trim();
+  const safe = /^(https?:\/\/|#|\/(?!\/)|\.\.?\/)/i.test(raw) ? raw : "#";
+  const isExternal = /^https?:/i.test(safe);
   return el(
     "a",
     {
-      href,
+      href: safe,
       ...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {}),
       ...attrs,
     },

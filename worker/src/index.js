@@ -51,7 +51,9 @@ function corsHeaders(request, env) {
     "Cache-Control": "no-store",
     Vary: "Origin",
   };
-  if (origin && (allowed.size === 0 || allowed.has(origin))) {
+  /* Fail closed: an empty/missing ALLOWED_ORIGINS disables cross-origin access
+   * instead of reflecting any site. */
+  if (origin && allowed.has(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
   return headers;
@@ -376,11 +378,19 @@ export class SignupRelayDO {
 
     try {
       if (path === "/invite" && request.method === "GET") {
+        const settings = await readSettings(this.env);
+        if (!settings.registrationEnabled) {
+          return json({ enabled: false }, 200, request, this.env);
+        }
         const state = await this.ensureActiveInvite();
         return json(this.publicPayload(state), 200, request, this.env);
       }
 
       if (path === "/claim" && request.method === "POST") {
+        const settings = await readSettings(this.env);
+        if (!settings.registrationEnabled) {
+          return json({ detail: "Registration is closed." }, 403, request, this.env);
+        }
         const ip = request.headers.get("CF-Connecting-IP") || "";
         const now = Date.now();
         if (ip) {
@@ -455,6 +465,11 @@ export class SignupRelayDO {
       }
 
       if (path === "/register" && request.method === "POST") {
+        const settings = await readSettings(this.env);
+        if (!settings.registrationEnabled) {
+          return json({ detail: "Registration is closed." }, 403, request, this.env);
+        }
+
         const ip = request.headers.get("CF-Connecting-IP") || "";
         const now = Date.now();
         if (ip) {
@@ -599,7 +614,8 @@ export class SignupRelayDO {
 
       return json({ detail: "Not found." }, 404, request, this.env);
     } catch (error) {
-      return json({ detail: error?.message || "Relay error." }, 502, request, this.env);
+      console.error("relay error", error);
+      return json({ detail: "Relay error." }, 502, request, this.env);
     }
   }
 }
@@ -627,6 +643,7 @@ async function handleSettings(request, env) {
 
 function trialCorsResponse(response, request, env) {
   const headers = new Headers(response.headers);
+  headers.delete("set-cookie");
   const cors = corsHeaders(request, env);
   for (const [k, v] of Object.entries(cors)) headers.set(k, v);
   /* Streams must remain streams; avoid buffering. */
@@ -751,6 +768,18 @@ async function handleTrial(request, env) {
       if (!fileName) {
         return json({ detail: "Missing file_name." }, 400, request, env);
       }
+      /* Never forward an arbitrary path: file_name must be one of the files
+       * RomM reports for the configured trial game. */
+      const rom = await fetchTrialRom(env, trialGameId);
+      const files = Array.isArray(rom.files) ? rom.files : [];
+      const file = files.find((item) => String(item?.file_name || "") === fileName);
+      const matchesFsName = !files.length && String(rom?.fs_name || "") === fileName && !fileIds;
+      if (!file && !matchesFsName) {
+        return json({ detail: "Unknown trial game file." }, 400, request, env);
+      }
+      if (file && fileIds && String(file.id ?? "") !== fileIds) {
+        return json({ detail: "Unknown trial game file." }, 400, request, env);
+      }
       const params = new URLSearchParams({ purpose: "play" });
       if (fileIds) params.set("file_ids", fileIds);
       const contentPath = `/api/roms/${encodeURIComponent(trialGameId)}/content/${encodeURIComponent(fileName)}?${params.toString()}`;
@@ -777,13 +806,15 @@ export default {
       const settingsResponse = await handleSettings(request, env);
       if (settingsResponse) return settingsResponse;
     } catch (error) {
-      return json({ detail: error?.message || "Settings error." }, 502, request, env);
+      console.error("settings error", error);
+      return json({ detail: "Settings error." }, 502, request, env);
     }
     try {
       const trialResponse = await handleTrial(request, env);
       if (trialResponse) return trialResponse;
     } catch (error) {
-      return json({ detail: error?.message || "Trial error." }, 502, request, env);
+      console.error("trial error", error);
+      return json({ detail: "Trial error." }, 502, request, env);
     }
     const id = env.RELAY.idFromName("global");
     return env.RELAY.get(id).fetch(request);

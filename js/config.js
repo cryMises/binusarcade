@@ -26,7 +26,10 @@ export const APP_VERSION = "1.0.0";
 export const EJS_VERSION = "4.2.3";
 export const EJS_CDN = `https://cdn.emulatorjs.org/${EJS_VERSION}/data`;
 export const EJS_LOADER = `${EJS_CDN}/loader.js`;
-export const RUFFLE_CDN = "https://unpkg.com/@ruffle-rs/ruffle";
+export const EJS_LOADER_SRI = "sha384-CwARP2ej7UlPGk5E0IPt89lxjdb3t7zStyLR6PL7Sg4xzHSrvXh/R4vbb4PrSv6U";
+export const RUFFLE_VERSION = "0.7.1";
+export const RUFFLE_CDN = `https://unpkg.com/@ruffle-rs/ruffle@${RUFFLE_VERSION}/ruffle.js`;
+export const RUFFLE_SRI = "sha384-6NrmfJx+zTZZPW41eipMGvyVrfvsDKenrh0v/YJ+nJq0WzzLvOHX6GCcQQ1GbIic";
 
 export const PAGE_SIZE = 48;
 export const RAIL_SIZE = 12;
