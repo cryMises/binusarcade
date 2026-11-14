@@ -14,8 +14,8 @@ compatibility_date = "2026-11-01"
 #   wrangler deploy
 [[kv_namespaces]]
 binding = "SETTINGS"
-id = "REPLACE_WITH_SETTINGS_KV_ID"
-preview_id = "REPLACE_WITH_SETTINGS_PREVIEW_KV_ID"
+id = "cac25d60de1f43b5a31dc9c8a4427d84"
+preview_id = "682fbd33337d4119bdde132a4d36e31c"
 
 [vars]
 ROMM_ORIGIN = "https://crymises-music.centralindia.cloudapp.azure.com:8449"
