@@ -216,7 +216,7 @@ export function trialView(ctx, initial = null) {
   function attachFrame(container, config) {
     iframe = el("iframe", {
       class: "play-iframe",
-      src: "./play-frame.html",
+      src: "./js/play-frame.html",
       title: t("{name} emulator", { name: rom?.name || t("Trial game") }),
       allow: "fullscreen; autoplay; gamepad; clipboard-write",
       allowfullscreen: "",
