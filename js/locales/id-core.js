@@ -43,6 +43,8 @@ export default {
     "Masuk dengan akun RomM kamu. Password tidak pernah disimpan.",
   "RomM username": "Nama pengguna RomM",
   Password: "Password",
+  "Show password": "Tampilkan kata sandi",
+  "Hide password": "Sembunyikan kata sandi",
   "Stay signed in on this device": "Tetap masuk di perangkat ini",
   "Best on your own phone or laptop.": "Cocok buat ponsel atau laptop pribadi.",
   "Fill in both fields.": "Isi kedua kolom.",

@@ -221,6 +221,31 @@ function renderLogin(message = "", opts = {}) {
     required: true,
   });
 
+  const passwordToggle = el(
+    "button",
+    {
+      class: "password-toggle",
+      type: "button",
+      "aria-label": t("Show password"),
+      "aria-pressed": "false",
+      title: t("Show password"),
+      on: {
+        click: () => {
+          const showing = password.type === "text";
+          password.type = showing ? "password" : "text";
+          const label = showing ? t("Show password") : t("Hide password");
+          passwordToggle.setAttribute("aria-label", label);
+          passwordToggle.setAttribute("aria-pressed", showing ? "false" : "true");
+          passwordToggle.setAttribute("title", label);
+          passwordToggle.replaceChildren(icon(showing ? "eye" : "eye-off", 18));
+        },
+      },
+    },
+    icon("eye", 18),
+  );
+
+  const passwordWrap = el("div", { class: "input-password-wrap" }, password, passwordToggle);
+
   const remember = el("input", {
     class: "check-input",
     id: "login-remember",
@@ -261,7 +286,7 @@ function renderLogin(message = "", opts = {}) {
       "div",
       { class: "field" },
       el("label", { for: "login-password" }, t("Password")),
-      password,
+      passwordWrap,
     ),
     rememberRow,
     errorBox,

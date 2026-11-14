@@ -197,10 +197,10 @@ export function profileView() {
         admin
           ? el(
               "a",
-              { class: "profile-row", href: "#/admin" },
+              { class: "profile-row", href: stockAdminUrl(), target: "_blank", rel: "noopener noreferrer" },
               el("span", { class: "profile-row-icon" }, icon("settings", 18)),
               t("Admin console"),
-              el("span", { class: "chev" }, "→"),
+              el("span", { class: "chev" }, "↗"),
             )
           : null,
         logoutButton,

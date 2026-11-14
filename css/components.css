@@ -529,6 +529,43 @@ a.chip-topic {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
+.input-password-wrap {
+  position: relative;
+}
+
+.input-password-wrap .input {
+  padding-right: 46px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.password-toggle:hover {
+  color: var(--on-surface);
+  background: var(--toplayer);
+}
+
+.password-toggle:focus-visible {
+  color: var(--on-surface);
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
 select.input {
   padding-right: 38px;
   appearance: none;
