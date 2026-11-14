@@ -21,7 +21,7 @@ import {
   EJS_LOADER,
   RUFFLE_CDN,
   colorForPlatform,
-  coresForPlatform,
+  defaultCoreFor,
   isRufflePlatform,
   isSupportedPlatform,
   platformLabelOf,
@@ -340,8 +340,7 @@ export function trialView(ctx, initial = null) {
     files = romFileChoices(rom);
     selectedFile = files.length === 1 ? files[0] : files[0] || null;
     const slugValues = [platformSlugOf(rom), rom?.platform_slug, rom?.platform_fs_slug, rom?.platform_display_name];
-    const cores = coresForPlatform(...slugValues);
-    core = cores[0] || null;
+    core = defaultCoreFor(...slugValues);
     mode = isRufflePlatform(...slugValues) ? "ruffle" : "ejs";
     const platformName = platformLabelOf(rom);
     const file = selectedFile;

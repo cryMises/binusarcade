@@ -484,6 +484,25 @@ const persistenceChecks = (() => {
 const checks = [
   ["Platform alias", config.normalizePlatform("ps") === "psx"],
   ["Platform accent", Boolean(config.colorForPlatform("gba", "Game Boy Advance"))],
+  [
+    "NDS core matches the device",
+    (() => {
+      const desktop = config.defaultCoreFor("nds") === "melonds";
+      const nav = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+      Object.defineProperty(globalThis, "navigator", {
+        value: { userAgent: "Mozilla/5.0 (Linux; Android 14)" },
+        configurable: true,
+      });
+      Object.defineProperty(globalThis, "window", {
+        value: { matchMedia: () => ({ matches: false }) },
+        configurable: true,
+      });
+      const phone = config.defaultCoreFor("nds") === "desmume";
+      Object.defineProperty(globalThis, "navigator", nav);
+      delete globalThis.window;
+      return desktop && phone && config.defaultCoreFor("gba") === "mgba";
+    })(),
+  ],
   ["Unknown platform safe", config.platformLabelOf({ platform_slug: "mystery" }) === "mystery"],
   ["Array query repeats", api.buildUrl("/roms", { platform_ids: [1, 2] }).includes("platform_ids=1&platform_ids=2")],
   ["Empty query dropped", !api.buildUrl("/roms", { search_term: "" }).includes("search_term")],

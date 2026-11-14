@@ -137,6 +137,21 @@ export function coresForPlatform(...values) {
   return [];
 }
 
+/* Touch-first phones get desmume for NDS; melonds stays the desktop default. */
+export function isPhoneDevice() {
+  if (typeof navigator === "undefined" || typeof window === "undefined") return false;
+  return (
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    window.matchMedia?.("(pointer: coarse)").matches === true
+  );
+}
+
+export function defaultCoreFor(...values) {
+  const cores = coresForPlatform(...values);
+  if (cores === PLATFORM_CORES.nds && isPhoneDevice()) return "desmume";
+  return cores[0] || null;
+}
+
 export function isRufflePlatform(...values) {
   return values.some((value) => RUFFLE_PLATFORMS.has(normalizePlatform(value)));
 }
