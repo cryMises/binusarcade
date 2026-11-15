@@ -902,25 +902,29 @@ export function adminView() {
           el("span", {}, t("Allow self-registration")),
         ),
       ),
-      el("h2", { class: "section-subhead" }, t("Notes per console")),
       el(
-        "p",
-        { class: "note" },
-        t("Shown on that console's game pages. Leave a console empty to hide its note."),
-      ),
-      el(
-        "div",
-        { class: "admin-note-grid" },
-        ...noteFields.map(({ slug, label, input }) =>
-          el(
-            "details",
-            { class: "admin-note-item" },
-            el("summary", {}, label),
+        "details",
+        { class: "admin-note-panel" },
+        el("summary", {}, icon("book", 16), t("Notes per console")),
+        el(
+          "p",
+          { class: "note" },
+          t("Shown on that console's game pages. Leave a console empty to hide its note."),
+        ),
+        el(
+          "div",
+          { class: "admin-note-grid" },
+          ...noteFields.map(({ slug, label, input }) =>
             el(
-              "label",
-              { class: "field", for: `note-${slug}` },
-              el("span", { class: "field-label" }, label),
-              input,
+              "details",
+              { class: "admin-note-item" },
+              el("summary", {}, label),
+              el(
+                "label",
+                { class: "field", for: `note-${slug}` },
+                el("span", { class: "field-label" }, label),
+                input,
+              ),
             ),
           ),
         ),

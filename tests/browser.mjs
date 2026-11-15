@@ -665,6 +665,18 @@ try {
     const beforeOpen = recorded.length;
     await page.goto(`${base}#/admin`);
     await page.waitForSelector("[data-signup-switch]", { timeout: 10_000 });
+    await page.waitForSelector(".admin-note-panel", { timeout: 10_000 });
+    assert(
+      (await page.evaluate(() => document.querySelector(".admin-note-panel").open)) === false,
+      "per-console notes start collapsed",
+    );
+    assert(!(await page.isVisible("#note-nds")), "console note fields stay hidden until expanded");
+    await page.click(".admin-note-panel > summary");
+    assert(await page.isVisible(".admin-note-item"), "opening the panel reveals the console list");
+    assert(!(await page.isVisible("#note-nds")), "each console note stays collapsed");
+    await page.click(".admin-note-grid .admin-note-item:nth-of-type(7) > summary");
+    await page.waitForSelector("#note-nds", { state: "visible", timeout: 10_000 });
+    assert(await page.isVisible("#note-nds"), "opening a console reveals its note field");
     assert(
       (await page.getAttribute("[data-signup-switch]", "aria-checked")) === "false",
       "signup QR switch defaults to OFF",
@@ -1166,6 +1178,10 @@ try {
     assert(await page.isVisible("text=Use DeSmuME on phones if games stutter."), "detail renders the general note");
     assert(notePlatform === "gba", "general note request carries the console slug");
     assert(await page.isVisible("[data-report-open]"), "detail shows the report button to signed-in visitors");
+    assert(
+      !(await page.locator(".detail-community-actions").innerText()).toLowerCase().includes("null"),
+      "community actions render no literal null",
+    );
     assert((await page.locator("[data-note-edit]").count()) === 0, "non-admin has no note editor");
     await page.click("[data-report-open]");
     await page.waitForSelector(".modal", { timeout: 10_000 });

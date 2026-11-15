@@ -316,8 +316,9 @@ async function loadCommunity(container, rom) {
       icon("alert", 15),
       t("Report a problem"),
     ),
-    editButton,
   );
+  /* Native append stringifies null, which printed a literal "null" for guests. */
+  if (editButton) actions.append(editButton);
 
   container.append(generalCallout, callout, actions);
 }

@@ -3512,3 +3512,28 @@ textarea.input {
 .admin-note-item textarea.input {
   min-height: 64px;
 }
+
+.admin-note-panel {
+  margin: 10px 0 16px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.admin-note-panel > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-note-panel .note {
+  margin: 0;
+}
+
+.admin-note-panel[open] > summary {
+  margin-bottom: 4px;
+}
