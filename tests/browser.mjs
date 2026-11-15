@@ -1287,6 +1287,9 @@ try {
         reopened = true;
         return send(route, { ok: true, report_id: 7, status: "open" });
       }
+      if (path === "/reports/7" && request.method() === "DELETE") {
+        return send(route, { ok: true, report_id: 7 });
+      }
       return send(route, { detail: "Not found" }, 404);
     });
 
@@ -1298,6 +1301,10 @@ try {
     await page.waitForSelector("text=Ticket reopened. The admin sees it again.", { timeout: 10_000 });
     assert((await page.locator(".report-reopen").count()) === 0, "reopened ticket hides the reopen button");
     await page.screenshot({ path: join(screenshots, "me-reports-390.png"), fullPage: true });
+    page.on("dialog", (dialog) => dialog.accept());
+    await page.click(".report-delete");
+    await page.waitForSelector("text=Ticket deleted.", { timeout: 10_000 });
+    assert((await page.locator(".report-ticket").count()) === 0, "deleted ticket leaves My reports");
     await context.close();
   }
 

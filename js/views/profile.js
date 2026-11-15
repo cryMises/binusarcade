@@ -325,22 +325,17 @@ function reportTicket(row) {
     { class: "btn btn-keycap-sm btn-ghost report-reopen", type: "button" },
     t("Reopen ticket"),
   );
-  reopen.addEventListener("click", async () => {
-    reopen.disabled = true;
-    try {
-      await api.reopenReport(current.id);
-      current = { ...current, status: "open" };
-      status.textContent = t("Ticket open");
-      status.className = "chip-cat report-status status-open";
-      reopen.remove();
-      toast(t("Ticket reopened. The admin sees it again."), { tone: "success" });
-    } catch (error) {
-      reopen.disabled = false;
-      toast(error.message || t("Couldn't reopen the ticket."), { tone: "error" });
-    }
-  });
 
-  return el(
+  const del = el(
+    "button",
+    { class: "btn btn-keycap-sm btn-ghost report-delete", type: "button" },
+    icon("close", 14),
+    t("Delete ticket"),
+  );
+
+  const actions = el("div", { class: "report-ticket-actions" }, current.status === "open" ? null : reopen, del);
+
+  const card = el(
     "article",
     { class: `report-ticket status-${current.status}` },
     el(
@@ -363,8 +358,38 @@ function reportTicket(row) {
           el("p", {}, current.admin_note),
         )
       : null,
-    current.status === "open" ? null : el("div", { class: "report-ticket-actions" }, reopen),
+    actions,
   );
+
+  reopen.addEventListener("click", async () => {
+    reopen.disabled = true;
+    try {
+      await api.reopenReport(current.id);
+      current = { ...current, status: "open" };
+      status.textContent = t("Ticket open");
+      status.className = "chip-cat report-status status-open";
+      reopen.remove();
+      toast(t("Ticket reopened. The admin sees it again."), { tone: "success" });
+    } catch (error) {
+      reopen.disabled = false;
+      toast(error.message || t("Couldn't reopen the ticket."), { tone: "error" });
+    }
+  });
+
+  del.addEventListener("click", async () => {
+    if (!window.confirm(t("Delete this ticket? This can't be undone."))) return;
+    del.disabled = true;
+    try {
+      await api.deleteReport(current.id);
+      card.remove();
+      toast(t("Ticket deleted."), { tone: "success" });
+    } catch (error) {
+      del.disabled = false;
+      toast(error.message || t("Couldn't delete the ticket."), { tone: "error" });
+    }
+  });
+
+  return card;
 }
 
 export function scoresView() {

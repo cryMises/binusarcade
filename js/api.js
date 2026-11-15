@@ -1011,6 +1011,10 @@ export const api = {
     return relayRequest(`/reports/${encodeURIComponent(id)}/reopen`, { method: "POST", auth: true, signal });
   },
 
+  deleteReport(id, { signal } = {}) {
+    return relayRequest(`/reports/${encodeURIComponent(id)}`, { method: "DELETE", auth: true, signal });
+  },
+
   requests({ all = false, signal } = {}) {
     return relayRequest(all ? "/requests?all=1" : "/requests", { auth: all, optionalAuth: !all, signal });
   },

@@ -168,4 +168,9 @@ export default {
   "Short fix or explanation for the player (optional)":
     "Perbaikan atau penjelasan singkat untuk pemain (opsional)",
   "Reply to the player": "Balasan untuk pemain",
+  "Delete ticket": "Hapus tiket",
+  "Delete this ticket? This can't be undone.":
+    "Hapus tiket ini? Tidak bisa dibatalkan.",
+  "Ticket deleted.": "Tiket dihapus.",
+  "Couldn't delete the ticket.": "Gagal menghapus tiket.",
 };

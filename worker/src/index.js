@@ -935,6 +935,25 @@ export class SignupRelayDO {
         }
       }
 
+      /* The reporter can delete their own ticket. */
+      {
+        const match = path.match(/^\/reports\/(\d+)$/);
+        if (match && request.method === "DELETE") {
+          const id = Number(match[1]);
+          const viewer = await resolveViewer(request, this.env);
+          const [report] = this.sql()
+            .exec("SELECT id, reporter_key FROM reports WHERE id = ?", id)
+            .toArray();
+          if (!report) return json({ detail: "Report not found." }, 404, request, this.env);
+          const owner = Boolean(viewer.user) && report.reporter_key === viewer.voterKey;
+          if (!owner && !(await this.verifyAdmin(request)).ok) {
+            return json({ detail: "Only the reporter can delete this ticket." }, 403, request, this.env);
+          }
+          this.sql().exec("DELETE FROM reports WHERE id = ?", id);
+          return json({ ok: true, report_id: id }, 200, request, this.env);
+        }
+      }
+
       /* ------------------------------------------------------------ */
       /* Per-game admin notes                                         */
       /* ------------------------------------------------------------ */

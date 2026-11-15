@@ -609,6 +609,9 @@ async function checkCommunityDO() {
     const reopenGuest = await call(`/reports/${mineTicket?.id}/reopen`, { method: "POST" });
     const reopenOwner = await call(`/reports/${mineTicket?.id}/reopen`, { method: "POST", token: "user-jwt" });
     const mineAfterReopen = await (await call("/reports?mine=1", { token: "user-jwt" })).json();
+    const deleteGuest = await call(`/reports/${mineTicket?.id}`, { method: "DELETE" });
+    const deleteOwner = await call(`/reports/${mineTicket?.id}`, { method: "DELETE", token: "user-jwt" });
+    const mineAfterDelete = await (await call("/reports?mine=1", { token: "user-jwt" })).json();
 
     /* Fill the daily report cap for 10.0.0.1, then expect 429. */
     let dailyReportLimit = false;
@@ -729,7 +732,10 @@ async function checkCommunityDO() {
         mineTicket?.admin_note === "Patched the core." &&
         reopenGuest.status === 403 &&
         reopenOwner.status === 200 &&
-        mineAfterReopen.reports?.[0]?.status === "open",
+        mineAfterReopen.reports?.[0]?.status === "open" &&
+        deleteGuest.status === 403 &&
+        deleteOwner.status === 200 &&
+        mineAfterDelete.reports?.length === 0,
       reportDailyCap: dailyReportLimit,
       requestAndVotes:
         requestCreated.status === 201 &&
