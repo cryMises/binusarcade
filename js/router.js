@@ -76,20 +76,39 @@ export function setDocumentTitle(title) {
 
 function fallback(error) {
   const div = document.createElement("div");
-  div.className = "view wrap";
+  div.className = "view wrap not-found-view";
+
+  const card = document.createElement("section");
+  card.className = "block stub-card not-found-card";
+
+  const eyebrow = document.createElement("p");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = error ? t("Something broke") : t("Not on this shelf");
+
   const marker = document.createElement("h1");
   marker.className = "marker";
   marker.textContent = error ? t("Couldn't load page") : t("Page not found");
+
   const note = document.createElement("p");
   note.className = "note";
   note.textContent = error
     ? t("That page didn't load. Head back to Home and try again.")
-    : t("That page doesn't exist.");
-  const link = document.createElement("a");
-  link.className = "btn btn-keycap btn-mint";
-  link.href = "#/";
-  link.textContent = t("Back to Home");
-  div.append(marker, note, link);
+    : t("That page doesn't exist. The link may be old, or the game may have left the library.");
+
+  const actions = document.createElement("div");
+  actions.className = "stub-actions";
+  const home = document.createElement("a");
+  home.className = "btn btn-keycap btn-mint";
+  home.href = "#/";
+  home.textContent = t("Back to Home");
+  const library = document.createElement("a");
+  library.className = "btn btn-keycap btn-ghost";
+  library.href = "#/library";
+  library.textContent = t("Open the library");
+  actions.append(home, library);
+
+  card.append(eyebrow, marker, note, actions);
+  div.append(card);
   return div;
 }
 

@@ -1031,7 +1031,7 @@ try {
     await page.click('a[href="#/trial"]');
     await page.waitForSelector('[data-trial-view]', { timeout: 10_000 });
     await page.waitForSelector("text=Mario Kart: Super Circuit", { timeout: 10_000 });
-    assert(await page.isVisible("text=Trial mode — progress won't be saved."), "guest trial shows no-save notice");
+    assert(await page.isVisible("text=Trial mode: progress won't be saved."), "guest trial shows no-save notice");
     assert(await page.isVisible("text=Sign in for the full library"), "guest trial offers sign-in CTA");
     assert(!(await page.isVisible("[data-stage-fs]")), "fullscreen button waits until the player boots");
     const stored = await page.evaluate(() => ({
@@ -1192,7 +1192,7 @@ try {
     await page.selectOption("#report-type", "black_screen");
     await page.fill(".modal textarea", "Audio only.");
     await page.click(".modal .btn-primary");
-    await page.waitForSelector("text=Thanks — the admin will take a look.", { timeout: 10_000 });
+    await page.waitForSelector("text=Thanks, the admin will take a look.", { timeout: 10_000 });
     assert(!(await page.isVisible(".modal")), "report form closes after submitting");
     await context.close();
   }

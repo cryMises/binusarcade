@@ -2,7 +2,7 @@
  * (js/views/register.js + js/views/signup.js). */
 
 export default {
-  /* Create account — form */
+  /* Create account, form */
   "Back to sign in": "Kembali ke halaman login",
   "Paste your invite token": "Tempel token undanganmu",
   Username: "Username",
@@ -29,7 +29,7 @@ export default {
     "Akun dibuat, tapi server tidak bisa dihubungi untuk login. Coba login dari halaman login.",
   "Account created, but sign-in failed.": "Akun dibuat, tapi gagal login.",
 
-  /* Create account — waiting for activation */
+  /* Create account, waiting for activation */
   "Account created · Binus Arcade": "Akun dibuat · Binus Arcade",
   "Account created": "Akun dibuat",
   "Waiting for activation": "Menunggu aktivasi",
@@ -38,7 +38,7 @@ export default {
   "New accounts start with no permissions until the admin promotes them.":
     "Akun baru belum punya izin sampai admin memberinya.",
 
-  /* Create account — poster and card */
+  /* Create account, poster and card */
   "Join the arcade": "Gabung ke arcade",
   "Registration is invite-only. Open the invite link from the RomM admin to fill in your token automatically, or paste a token here.":
     "Pendaftaran cuma lewat undangan. Buka link undangan dari admin RomM agar tokenmu terisi otomatis, atau tempel token di sini.",
@@ -48,7 +48,7 @@ export default {
   "Uses the same RomM account you'll sign in with. The password never touches storage.":
     "Memakai akun RomM yang sama untuk login. Password tidak pernah disimpan.",
 
-  /* Create account — disabled and claim states */
+  /* Create account, disabled and claim states */
   "Invite required": "Butuh undangan",
   "Ask the admin for a signup code": "Minta kode pendaftaran ke admin",
   "The signup QR panel is currently turned off. Ask the RomM admin to enable it or send you an invite code.":
@@ -72,12 +72,12 @@ export default {
   "Signup relay is not configured on this build. Ask the admin for a direct invite link.":
     "Relay pendaftaran belum dikonfigurasi di build ini. Minta link undangan langsung ke admin.",
 
-  /* Create account — public QR */
+  /* Create account, public QR */
   "Scan with another phone's camera or tap Use this invite. Updates automatically after each scan.":
     "Scan pakai kamera ponsel lain atau ketuk Pakai undangan ini. Update otomatis setelah tiap scan.",
   "Use this invite": "Pakai undangan ini",
-  "Previous QR was scanned — updated to a fresh QR.":
-    "QR sebelumnya sudah di-scan — diganti ke QR baru.",
+  "Previous QR was scanned. Updated to a fresh QR.":
+    "QR sebelumnya sudah di-scan. Diganti ke QR baru.",
   "Scan invite QR": "Scan QR undangan",
   "Expires in": "Kedaluwarsa dalam",
   "Checking signup QR…": "Memeriksa QR pendaftaran…",
@@ -102,23 +102,23 @@ export default {
     "Undangan pemain sekali pakai (role: user). Siapa pun yang scan QR ini atau membuka link-nya bisa membuat akun pemain. Refresh otomatis saat pengguna baru mendaftar atau saat timer 60:00 habis.",
   "Admin invite": "Undangan admin",
   "Friend signup QR": "QR pendaftaran teman",
-  "Invite expired — minted a fresh invite.":
-    "Undangan kedaluwarsa — undangan baru sudah dibuat.",
+  "Invite expired. Minted a fresh invite.":
+    "Undangan kedaluwarsa. Undangan baru sudah dibuat.",
   "Shared on Create account. Rotates automatically after every scan.":
     "Dibagikan di Buat akun. Berganti otomatis setelah setiap scan.",
-  "Invite scanned — updated QR.": "Undangan di-scan — QR diperbarui.",
-  "Invite scanned — updated to a fresh QR.":
-    "Undangan di-scan — diganti ke QR baru.",
-  "Couldn't check relay status — keeping current QR and retrying soon.":
-    "Gagal memeriksa status relay — QR saat ini tetap dipakai dan dicoba lagi nanti.",
+  "Invite scanned. Updated QR.": "Undangan di-scan. QR diperbarui.",
+  "Invite scanned. Updated to a fresh QR.":
+    "Undangan di-scan. Diganti ke QR baru.",
+  "Couldn't check relay status. Keeping the current QR and retrying soon.":
+    "Gagal memeriksa status relay. QR saat ini tetap dipakai dan dicoba lagi nanti.",
   "Invite ready, but this session lacks users.read scope for automatic refresh. Use New invite manually.":
     "Undangan siap, tapi sesi ini tidak punya scope users.read untuk refresh otomatis. Pakai tombol Undangan baru secara manual.",
-  "New account registered — refreshed invite QR.":
-    "Akun baru terdaftar — QR undangan diperbarui.",
+  "New account registered. Refreshed invite QR.":
+    "Akun baru terdaftar. QR undangan diperbarui.",
   "Auto-refresh paused because users.read scope is missing. Current QR still works.":
     "Refresh otomatis di-pause karena scope users.read tidak ada. QR saat ini masih berfungsi.",
-  "Couldn't check for new signups — keeping the current QR and retrying soon.":
-    "Gagal memeriksa pendaftar baru — QR saat ini tetap dipakai dan dicoba lagi nanti.",
+  "Couldn't check for new signups. Keeping the current QR and retrying soon.":
+    "Gagal memeriksa pendaftar baru. QR saat ini tetap dipakai dan dicoba lagi nanti.",
   "Minting…": "Membuat undangan…",
   "Signup relay returned no active invite.":
     "Relay pendaftaran tidak mengembalikan undangan aktif.",
@@ -131,8 +131,8 @@ export default {
   "Couldn't mint a new invite.": "Gagal membuat undangan baru.",
   "Couldn't reach RomM to create an invite link.":
     "Tidak bisa menghubungi RomM untuk membuat link undangan.",
-  "Invite expired while away — minted a fresh invite.":
-    "Undangan kedaluwarsa saat kamu pergi — undangan baru sudah dibuat.",
+  "Invite expired while away. Minted a fresh invite.":
+    "Undangan kedaluwarsa saat kamu pergi. Undangan baru sudah dibuat.",
 
   /* Signup view */
   "Admin access required": "Butuh akses admin",

@@ -364,7 +364,7 @@ function openReportForm(rom) {
         note: note.value.trim(),
       });
       closeModal();
-      toast(t("Thanks — the admin will take a look."), { tone: "success" });
+      toast(t("Thanks, the admin will take a look."), { tone: "success" });
     } catch (error) {
       submit.disabled = false;
       submit.textContent = t("Send report");

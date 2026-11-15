@@ -346,7 +346,7 @@ function renderLogin(message = "", opts = {}) {
     el(
       "p",
       { class: "note" },
-      t("Your RomM library, tuned for a phone. Stats, shelves, and saves — no clutter."),
+      t("Your RomM library, tuned for a phone. Stats, shelves, and saves without the clutter."),
     ),
   );
 

@@ -252,7 +252,7 @@ export function createSignupPanel({
     const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
     countdownBadge.textContent = formatCountdown(remaining);
     if (remaining <= 0 && !mintInFlight) {
-      void mintInvite(t("Invite expired — minted a fresh invite."), { forceRotate: !relayMode });
+      void mintInvite(t("Invite expired. Minted a fresh invite."), { forceRotate: !relayMode });
     }
   }
 
@@ -315,12 +315,12 @@ export function createSignupPanel({
         return;
       }
       if (data.claimId && data.claimId !== currentToken) {
-        toast(t("Invite scanned — updated QR."), { tone: "success" });
-        applyRelayInvite(data, t("Invite scanned — updated to a fresh QR."));
+        toast(t("Invite scanned. Updated QR."), { tone: "success" });
+        applyRelayInvite(data, t("Invite scanned. Updated to a fresh QR."));
       }
     } catch (error) {
       if (disposed || error?.name === "AbortError") return;
-      statusLine.textContent = t("Couldn't check relay status — keeping current QR and retrying soon.");
+      statusLine.textContent = t("Couldn't check relay status. Keeping the current QR and retrying soon.");
     } finally {
       pollInFlight = false;
       if (activePoll === ac) activePoll = null;
@@ -363,8 +363,8 @@ export function createSignupPanel({
       const hasNewUser = [...ids].some((id) => !knownUserIds.has(id));
       knownUserIds = ids;
       if (hasNewUser) {
-        toast(t("New account registered — refreshed invite QR."), { tone: "success" });
-        await mintInvite(t("New account registered — refreshed invite QR."));
+        toast(t("New account registered. Refreshed invite QR."), { tone: "success" });
+        await mintInvite(t("New account registered. Refreshed invite QR."));
       }
     } catch (error) {
       if (disposed || error?.name === "AbortError") return;
@@ -379,7 +379,7 @@ export function createSignupPanel({
         );
       } else {
         statusLine.textContent = t(
-          "Couldn't check for new signups — keeping the current QR and retrying soon.",
+          "Couldn't check for new signups. Keeping the current QR and retrying soon.",
         );
       }
     } finally {
@@ -476,7 +476,7 @@ export function createSignupPanel({
       return;
     }
     if (expiresAt > 0 && Date.now() >= expiresAt) {
-      void mintInvite(t("Invite expired while away — minted a fresh invite."));
+      void mintInvite(t("Invite expired while away. Minted a fresh invite."));
     } else {
       renderCountdown();
     }

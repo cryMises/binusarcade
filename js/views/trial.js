@@ -233,11 +233,11 @@ export function trialView(ctx, initial = null) {
       if (!data || data.source !== PLAY_MESSAGE) return;
       if (data.type === "ready") updateStatus(t("Engine ready. Start the game."));
       if (data.type === "started") {
-        updateStatus(t("Playing. Trial mode — progress won't be saved."));
+        updateStatus(t("Playing. Trial mode: progress won't be saved."));
         logPlayerInfo();
       }
       if (data.type === "state-request") {
-        toast(t("Trial mode — progress won't be saved."), { tone: "warn" });
+        toast(t("Trial mode: progress won't be saved."), { tone: "warn" });
         sendToFrame("resume");
       }
       if (data.type === "notice") toast(data.message || t("Emulator update."), { tone: data.tone || "info" });
@@ -412,7 +412,7 @@ export function trialView(ctx, initial = null) {
           "div",
           { class: "trial-stage-statusline" },
           el("span", { class: "trial-stage-dot", "aria-hidden": "true" }),
-          el("p", { class: "trial-stage-status", "data-trial-status": "", "aria-live": "polite" }, t("Trial mode — progress won't be saved.")),
+          el("p", { class: "trial-stage-status", "data-trial-status": "", "aria-live": "polite" }, t("Trial mode: progress won't be saved.")),
           fsButton,
         ),
         el("div", { class: "trial-stage-alert", "data-trial-error": "" }),

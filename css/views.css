@@ -48,18 +48,8 @@
   display: block;
   width: 72px;
   height: 72px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
-  animation: cartBounce 2.4s var(--ease) infinite alternate;
-}
-
-@keyframes cartBounce {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-4px);
-  }
 }
 
 .splash-card .marker {
@@ -78,9 +68,7 @@
   top: 0;
   z-index: 40;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--background) 88%, transparent);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: var(--background);
 }
 
 .topbar-inner {
@@ -105,7 +93,7 @@
   width: 34px;
   height: 34px;
   flex: 0 0 auto;
-  border-radius: 9px;
+  border-radius: var(--radius);
   object-fit: cover;
 }
 
@@ -579,15 +567,7 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .game-card:hover {
-    transform: translateY(-2px);
-  }
-
   .game-card:hover .game-cover {
-    box-shadow: var(--shadow-2);
-  }
-
-  .cart:hover {
     box-shadow: var(--shadow-2);
   }
 }
@@ -950,7 +930,7 @@
   bottom: -1px;
   left: 12px;
   height: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   background: var(--primary);
 }
 
@@ -1253,7 +1233,6 @@
   gap: 10px;
   padding: 12px 16px;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--primary);
   border-radius: var(--radius);
   background: var(--toplayer);
   box-shadow: var(--shadow-2);
@@ -1265,15 +1244,15 @@
 }
 
 .toast[data-tone="error"] {
-  border-left-color: var(--romm-red);
+  border-color: var(--romm-red);
 }
 
 .toast[data-tone="warn"] {
-  border-left-color: var(--romm-gold);
+  border-color: var(--romm-gold);
 }
 
 .toast[data-tone="success"] {
-  border-left-color: var(--romm-green);
+  border-color: var(--romm-green);
 }
 
 @keyframes toastIn {
@@ -1348,7 +1327,7 @@
 @keyframes modalIn {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -1496,7 +1475,7 @@
 
 .login-help code {
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--chip-bg);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.6875rem;
@@ -2435,12 +2414,7 @@ a.stat-card:hover {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--primary) 7%, var(--surface)),
-      var(--surface) 64%
-    );
+  background: var(--surface);
   box-shadow: var(--shadow-1);
   animation: trialRise 420ms var(--ease) both;
 }
@@ -2530,8 +2504,8 @@ a.stat-card:hover {
 .trial-note {
   margin-top: 4px;
   padding: 7px 9px;
-  border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
   background: var(--chip-bg);
   color: var(--on-surface-muted);
   font-size: 0.75rem;
@@ -2551,11 +2525,6 @@ a.stat-card:hover {
   gap: 10px;
   font-size: 0.875rem;
   letter-spacing: 0.08em;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 22%, transparent);
-}
-
-.trial-start:hover {
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .trial-start svg {
@@ -2586,22 +2555,12 @@ a.stat-card:hover {
   height: 100%;
   overflow: hidden;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--primary), var(--primary-lighten));
+  background: var(--primary);
   transition: width 160ms var(--ease);
 }
 
 .progress-fill::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.35),
-    transparent
-  );
-  transform: translateX(-100%);
-  animation: trialProgressSheen 1.4s linear infinite;
+  content: none;
 }
 
 .trial-progress-text {
@@ -2684,7 +2643,7 @@ a.stat-card:hover {
   flex: 0 0 auto;
   margin-left: auto;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--surface);
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -2753,8 +2712,7 @@ a.stat-card:hover {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background:
-    radial-gradient(120% 90% at 50% 30%, #1d1830 0%, #08070b 72%);
+  background: #0b0a10;
 }
 
 .trial-stage-empty > img {
@@ -2784,14 +2742,7 @@ a.stat-card:hover {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background:
-    radial-gradient(
-      120% 90% at 50% 42%,
-      rgba(8, 7, 11, 0.12) 0%,
-      rgba(8, 7, 11, 0.6) 58%,
-      rgba(8, 7, 11, 0.92) 100%
-    ),
-    linear-gradient(180deg, rgba(8, 7, 11, 0.2), rgba(8, 7, 11, 0.55));
+  background: linear-gradient(180deg, rgba(8, 7, 11, 0.35), rgba(8, 7, 11, 0.9));
 }
 
 .trial-stage-play {
@@ -2800,14 +2751,11 @@ a.stat-card:hover {
   display: grid;
   width: clamp(64px, 18vw, 88px);
   height: clamp(64px, 18vw, 88px);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(8, 7, 11, 0.62);
   color: #fff;
-  box-shadow:
-    0 0 0 12px rgba(255, 255, 255, 0.04),
-    0 18px 44px rgba(0, 0, 0, 0.48);
-  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-2);
   place-items: center;
 }
 
@@ -2906,12 +2854,6 @@ html.stage-expanded body {
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes trialProgressSheen {
-  to {
-    transform: translateX(220%);
   }
 }
 
@@ -3058,8 +3000,12 @@ html.stage-expanded body {
   display: flex;
   gap: 12px;
   padding: 12px 14px;
-  border-left: 3px solid var(--primary);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.game-note-general {
   background: var(--chip-bg);
 }
 
@@ -3560,7 +3506,7 @@ textarea.input {
 }
 
 .report-ticket.status-resolved {
-  border-left: 3px solid var(--primary);
+  border-color: var(--primary);
 }
 
 .report-ticket.status-dismissed {
@@ -3600,7 +3546,7 @@ textarea.input {
   gap: 2px;
   margin-top: 4px;
   padding: 8px 10px;
-  border-left: 3px solid var(--primary);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--chip-bg);
 }

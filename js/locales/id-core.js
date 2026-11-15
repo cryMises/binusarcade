@@ -35,8 +35,8 @@ export default {
   "Your session expired. Sign in again.": "Sesi kamu berakhir. Login lagi.",
   "Signed out.": "Kamu sudah logout.",
   "Self-hosted game library": "Library game pribadi",
-  "Your RomM library, tuned for a phone. Stats, shelves, and saves — no clutter.":
-    "Library RomM kamu, dirapikan buat layar ponsel. Statistik, rak game, dan save.",
+  "Your RomM library, tuned for a phone. Stats, shelves, and saves without the clutter.":
+    "Library RomM kamu, dirapikan buat layar ponsel. Statistik, rak game, dan save game.",
   "RomM account": "Akun RomM",
   "Sign in": "Login",
   "Sign in with your RomM account. Your password never touches storage.":
@@ -63,10 +63,15 @@ export default {
   /* Router fallbacks */
   "Page not found": "Halaman tidak ditemukan",
   "Couldn't load page": "Gagal memuat halaman",
+  "Not on this shelf": "Tidak ada di rak ini",
+  "Something broke": "Ada yang rusak",
   "That page didn't load. Head back to Home and try again.":
     "Halaman itu gagal dimuat. Kembali ke Beranda lalu coba lagi.",
+  "That page doesn't exist. The link may be old, or the game may have left the library.":
+    "Halaman itu tidak ada. Linknya mungkin sudah lama, atau game-nya sudah keluar dari library.",
   "That page doesn't exist.": "Halaman itu tidak ada.",
   "Back to Home": "Kembali ke Beranda",
+  "Open the library": "Buka pustaka",
 
   /* Shared components */
   "Something went sideways.": "Ada yang tidak beres.",
@@ -156,9 +161,9 @@ export default {
   "Downloaded. Tap start inside the player if it asks.":
     "Sudah download. Ketuk start di dalam player kalau diminta.",
   "Engine ready. Start the game.": "Engine siap. Mulai game-nya.",
-  "Playing. Trial mode — progress won't be saved.":
-    "Sedang main. Mode trial — progres tidak akan disimpan.",
-  "Trial mode — progress won't be saved.": "Mode trial — progres tidak akan disimpan.",
+  "Playing. Trial mode: progress won't be saved.":
+    "Sedang main. Mode trial: progres tidak akan disimpan.",
+  "Trial mode: progress won't be saved.": "Mode trial, progres tidak akan disimpan.",
   "Download cancelled.": "Download dibatalkan.",
   "Couldn't download that game.": "Gagal download game itu.",
   "BIOS wasn't available. Some games may not boot without one.":

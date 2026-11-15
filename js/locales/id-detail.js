@@ -89,7 +89,7 @@ export default {
   "Send report": "Kirim laporan",
   "Sending…": "Mengirim…",
   "Pick a problem type.": "Pilih jenis masalahnya.",
-  "Thanks — the admin will take a look.": "Terima kasih — admin akan mengeceknya.",
+  "Thanks, the admin will take a look.": "Terima kasih, admin akan mengeceknya.",
   "Couldn't send the report.": "Gagal mengirim laporan.",
   "PC only, stylus game, switch to DeSmuME on phones…":
     "Hanya PC, game pakai stylus, ganti ke DeSmuME di ponsel…",

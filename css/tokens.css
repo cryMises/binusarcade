@@ -35,16 +35,16 @@
   --success-soft: rgba(63, 185, 80, 0.12);
   --warn-soft: rgba(255, 215, 0, 0.16);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 10px rgba(0, 0, 0, 0.06);
-  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.08), 0 10px 28px rgba(0, 0, 0, 0.12);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.07);
+  --shadow-2: 0 6px 16px rgba(0, 0, 0, 0.14);
 
   --radius-sm: 4px;
   --radius: 8px;
   --radius-lg: 12px;
   --radius-pill: 999px;
 
-  --font: "Segoe UI", system-ui, -apple-system, "Inter", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial,
+    sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas,
     monospace;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -79,8 +79,8 @@
   --success-soft: rgba(63, 185, 80, 0.18);
   --warn-soft: rgba(255, 215, 0, 0.14);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.45);
-  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 12px 30px rgba(0, 0, 0, 0.55);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.6);
 
   --focus: #a18fff;
 }

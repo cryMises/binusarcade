@@ -549,7 +549,7 @@ export function registerView() {
         }
         if (next.claimId !== currentClaimId) {
           drawQr(next);
-          status.textContent = t("Previous QR was scanned — updated to a fresh QR.");
+          status.textContent = t("Previous QR was scanned. Updated to a fresh QR.");
         }
       } catch {
         /* Keep current QR on transient poll hiccup. */
