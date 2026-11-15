@@ -1081,6 +1081,124 @@ try {
     await context.close();
   }
 
+  /* Community: public request box, report form, admin note */
+  {
+    const { context, page } = await newPage(browser, { signedIn: false, relayUrl: "https://relay.example" });
+    let votes = 3;
+    let voted = false;
+    await page.route("https://relay.example/**", async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (path === "/requests" && request.method() === "GET") {
+        return send(route, {
+          openCount: 1,
+          requests: [
+            {
+              id: 1,
+              title: "Chrono Trigger",
+              platform_slug: "snes",
+              note: "Please add it.",
+              requester: "guest",
+              status: "open",
+              created_at: Date.now() - 3_600_000,
+              votes,
+              voted,
+            },
+          ],
+        });
+      }
+      if (path === "/requests" && request.method() === "POST") return send(route, { ok: true }, 201);
+      if (path === "/requests/1/vote" && request.method() === "POST") {
+        voted = !voted;
+        votes += voted ? 1 : -1;
+        return send(route, { ok: true, request_id: 1, votes, voted });
+      }
+      return send(route, { detail: "Not found" }, 404);
+    });
+
+    await page.goto(`${base}#/request`);
+    await page.waitForSelector(".request-form", { timeout: 10_000 });
+    assert(await page.isVisible("text=Chrono Trigger"), "signed-out request box lists requests");
+    assert((await page.locator('[data-note-edit], [data-signup-switch]').count()) === 0, "request box hides admin controls");
+    assert((await page.locator(".request-vote-count").innerText()) === "3", "request vote count renders");
+    await page.click(".request-vote");
+    await page.waitForFunction(() => document.querySelector(".request-vote-count")?.textContent === "4");
+    assert(
+      (await page.getAttribute(".request-vote", "aria-pressed")) === "true",
+      "vote toggles on and increments the count",
+    );
+    await page.click(".request-vote");
+    await page.waitForFunction(() => document.querySelector(".request-vote-count")?.textContent === "3");
+    await page.fill("#request-title", "EarthBound");
+    await page.selectOption("#request-platform", "snes");
+    await page.click('.request-form button[type="submit"]');
+    await page.waitForSelector("text=Request sent.", { timeout: 10_000 });
+    assert(true, "request form submits and confirms");
+    await page.screenshot({ path: join(screenshots, "request-390.png"), fullPage: true });
+    await context.close();
+  }
+
+  {
+    const { context, page } = await newPage(browser, { relayUrl: "https://relay.example" });
+    await page.route("https://relay.example/**", async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (path === "/notes/1" && request.method() === "GET") {
+        return send(route, { rom_id: 1, text: "PC only, stylus game." });
+      }
+      if (path === "/reports" && request.method() === "POST") return send(route, { ok: true }, 201);
+      return send(route, { detail: "No note for this game." }, 404);
+    });
+
+    await page.goto(`${base}#/game/1`);
+    await page.waitForSelector(".detail-title", { timeout: 10_000 });
+    await page.waitForSelector(".game-note", { timeout: 10_000 });
+    assert(await page.isVisible("text=PC only, stylus game."), "detail renders the public admin note");
+    assert(await page.isVisible("[data-report-open]"), "detail shows the report button to signed-in visitors");
+    assert((await page.locator("[data-note-edit]").count()) === 0, "non-admin has no note editor");
+    await page.click("[data-report-open]");
+    await page.waitForSelector(".modal", { timeout: 10_000 });
+    await page.selectOption("#report-type", "black_screen");
+    await page.fill(".modal textarea", "Audio only.");
+    await page.click(".modal .btn-primary");
+    await page.waitForSelector("text=Thanks — the admin will take a look.", { timeout: 10_000 });
+    assert(!(await page.isVisible(".modal")), "report form closes after submitting");
+    await context.close();
+  }
+
+  {
+    const { context, page } = await newPage(browser, { userRole: "admin", relayUrl: "https://relay.example" });
+    let note = "";
+    await page.route("https://relay.example/**", async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (path === "/notes/1" && request.method() === "GET") {
+        return note ? send(route, { rom_id: 1, text: note }) : send(route, { detail: "No note." }, 404);
+      }
+      if (path === "/notes" && request.method() === "POST") {
+        note = JSON.parse(request.postData() || "{}").text || "";
+        return send(route, { ok: true, rom_id: 1, text: note || null });
+      }
+      return send(route, { detail: "Not found" }, 404);
+    });
+
+    await page.goto(`${base}#/game/1`);
+    await page.waitForSelector(".detail-title", { timeout: 10_000 });
+    await page.waitForSelector("[data-note-edit]", { timeout: 10_000 });
+    assert(await page.isVisible("[data-note-edit]"), "admin sees the note editor");
+    await page.click("[data-note-edit]");
+    await page.waitForSelector(".modal textarea", { timeout: 10_000 });
+    await page.fill(".modal textarea", "Switch to DeSmuME on phones.");
+    await page.click(".modal .btn-primary");
+    await page.waitForSelector(".game-note", { timeout: 10_000 });
+    assert(await page.isVisible("text=Switch to DeSmuME on phones."), "admin note saves and renders publicly");
+    await page.screenshot({ path: join(screenshots, "detail-note-390.png"), fullPage: true });
+    await context.close();
+  }
+
   /* Indonesian signed-in shell */
   {
     const { context, page } = await newPage(browser, { lang: "id" });

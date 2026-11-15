@@ -262,6 +262,11 @@ export function homeView(ctx) {
     el("h1", { class: "home-title" }, "Binus Arcade"),
     el("p", { class: "note" }, t("A stats-only look at the collection. Pick a game from the Library.")),
     search,
+    el(
+      "p",
+      { class: "hero-links" },
+      el("a", { class: "btn btn-ghost", href: "#/request" }, icon("book", 15), t("Request a game")),
+    ),
   );
 
   const statsSection = el("section", { class: "section", "aria-labelledby": "home-stats-title" });

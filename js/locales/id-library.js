@@ -72,4 +72,34 @@ export default {
   "{n} games on this shelf.": "{n} game di rak ini.",
   "1 system": "1 sistem",
   "{n} systems": "{n} sistem",
+
+  /* Game request box */
+  "Request a game": "Minta game",
+  "Request box": "Kotak request",
+  "Ask the admin to add a game. Upvote an existing request instead of filing a duplicate.":
+    "Minta admin menambah game. Upvote request yang sudah ada daripada bikin duplikat.",
+  "Wanted games": "Game yang diminta",
+  "Game title": "Judul game",
+  "Platform (optional)": "Platform (opsional)",
+  "Any platform": "Platform apa saja",
+  "Note (optional)": "Catatan (opsional)",
+  "Why this game? Optional": "Kenapa game ini? Opsional",
+  "Send request": "Kirim request",
+  "Enter a game title.": "Isi judul game.",
+  "Request sent.": "Request terkirim.",
+  "Loading requests…": "Memuat request…",
+  "No requests yet": "Belum ada request",
+  "Be the first to ask for a game.": "Jadi yang pertama minta game.",
+  "Request box unavailable": "Kotak request tidak tersedia",
+  "Couldn't reach the request box. Try again later.":
+    "Tidak bisa menghubungi kotak request. Coba lagi nanti.",
+  "Vote for {title}": "Vote untuk {title}",
+  "One vote per person. Tap again to remove your vote.":
+    "Satu vote per orang. Ketuk lagi untuk membatalkan vote.",
+  "Couldn't save your vote.": "Gagal menyimpan vote.",
+  "Requested by {name}": "Diminta oleh {name}",
+  "Open request": "Terbuka",
+  "Planned": "Direncanakan",
+  "Added": "Ditambahkan",
+  "Denied": "Ditolak",
 };

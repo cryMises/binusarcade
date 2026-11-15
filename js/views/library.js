@@ -110,6 +110,11 @@ export function libraryView(ctx) {
     el("div", { class: "eyebrow" }, t(platformSlug ? "System shelf" : "All systems")),
     title,
     subtitle,
+    el(
+      "div",
+      { class: "library-head-actions" },
+      el("a", { class: "btn btn-ghost btn-keycap-sm", href: "#/request" }, icon("book", 15), t("Request a game")),
+    ),
     headNotes,
   );
 

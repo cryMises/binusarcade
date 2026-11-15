@@ -700,7 +700,10 @@ export function relayUrl(path = "") {
   return `${base}${suffix}`;
 }
 
-async function relayRequest(path, { method = "GET", body, auth = false, signal, timeout = 12_000 } = {}) {
+async function relayRequest(
+  path,
+  { method = "GET", body, auth = false, optionalAuth = false, signal, timeout = 12_000 } = {},
+) {
   const base = String(SIGNUP_RELAY_URL || "").trim().replace(/\/+$/, "");
   if (!base) {
     throw new ApiError(t("Signup relay is not configured."), { status: 0 });
@@ -713,6 +716,14 @@ async function relayRequest(path, { method = "GET", body, auth = false, signal, 
   }
   if (auth) {
     headers.Authorization = `Bearer ${await accessToken()}`;
+  } else if (optionalAuth && hasSession()) {
+    /* Public endpoints accept a token for attribution but must still work
+     * when the session is stale, so never let this failure block the call. */
+    try {
+      headers.Authorization = `Bearer ${await accessToken()}`;
+    } catch {
+      /* anonymous fallback */
+    }
   }
   const { signal: mergedSignal, done } = mergeSignals(timeout, signal);
   let response;
@@ -954,6 +965,69 @@ export const api = {
       signal,
       timeout: 12_000,
     });
+  },
+
+  /* Community endpoints are served by the relay Worker (see worker/src/index.js). */
+  gameNote(romId, { signal } = {}) {
+    return relayRequest(`/notes/${encodeURIComponent(romId)}`, { signal, timeout: 8_000 }).catch((error) => {
+      if (error?.status === 404) return null;
+      throw error;
+    });
+  },
+
+  saveGameNote(romId, text, { signal } = {}) {
+    return relayRequest("/notes", {
+      method: "POST",
+      body: { rom_id: Number(romId), text: String(text || "") },
+      auth: true,
+      signal,
+      timeout: 10_000,
+    });
+  },
+
+  reportProblem(payload, { signal } = {}) {
+    return relayRequest("/reports", { method: "POST", body: payload, optionalAuth: true, signal });
+  },
+
+  adminReports({ status = "open", signal } = {}) {
+    return relayRequest(`/reports?status=${encodeURIComponent(status)}`, { auth: true, signal });
+  },
+
+  resolveReport(id, action = "resolve", { signal } = {}) {
+    return relayRequest(`/reports/${encodeURIComponent(id)}/${action === "dismiss" ? "dismiss" : "resolve"}`, {
+      method: "POST",
+      auth: true,
+      signal,
+    });
+  },
+
+  requests({ all = false, signal } = {}) {
+    return relayRequest(all ? "/requests?all=1" : "/requests", { auth: all, optionalAuth: !all, signal });
+  },
+
+  createRequest(payload, { signal } = {}) {
+    return relayRequest("/requests", { method: "POST", body: payload, optionalAuth: true, signal });
+  },
+
+  voteRequest(id, { signal } = {}) {
+    return relayRequest(`/requests/${encodeURIComponent(id)}/vote`, {
+      method: "POST",
+      optionalAuth: true,
+      signal,
+    });
+  },
+
+  setRequestStatus(id, status, { signal } = {}) {
+    return relayRequest(`/requests/${encodeURIComponent(id)}/status`, {
+      method: "POST",
+      body: { status },
+      auth: true,
+      signal,
+    });
+  },
+
+  deleteRequest(id, { signal } = {}) {
+    return relayRequest(`/requests/${encodeURIComponent(id)}`, { method: "DELETE", auth: true, signal });
   },
 
   /* Trial endpoints are served by the relay Worker (no RomM-origin calls from guest). */

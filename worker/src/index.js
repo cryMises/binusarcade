@@ -19,6 +19,33 @@ const DEFAULT_SETTINGS = {
   registrationEnabled: true,
 };
 
+/* Community features (broken-game reports, per-game notes, game requests). */
+const REPORT_TYPES = new Set([
+  "wont_load",
+  "black_screen",
+  "controls",
+  "no_sound",
+  "save_problem",
+  "other",
+]);
+const REPORT_NOTE_MAX = 200;
+const ROM_TITLE_MAX = 200;
+const GAME_NOTE_MAX = 200;
+const REQUEST_TITLE_MAX = 100;
+const REQUEST_NOTE_MAX = 200;
+const REQUEST_STATUSES = new Set(["open", "planned", "added", "denied"]);
+const IP_SALT = "binusarcade-community-v1";
+const DAY_MS = 86_400_000;
+
+/* Abuse throttles. Tunable; kept here so limits are easy to audit. */
+const REPORT_GAME_COOLDOWN_MS = 3_600_000; /* 1 report per game per IP per hour */
+const REPORT_DAILY_MAX = 10; /* reports per IP per day */
+const REQUEST_DAILY_MAX = 5; /* new requests per IP per day */
+const VOTE_DAILY_MAX = 30; /* vote toggles per IP per day */
+const VOTE_RETENTION_MS = 2 * DAY_MS;
+const VIEWER_TIMEOUT_MS = 3_000;
+const LIST_LIMIT = 500;
+
 function trialSecret(env) {
   return String(env?.TRIAL_API_TOKEN || "").trim();
 }
@@ -46,7 +73,7 @@ function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") || "";
   const allowed = parseAllowedOrigins(env?.ALLOWED_ORIGINS);
   const headers = {
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Cache-Control": "no-store",
     Vary: "Origin",
@@ -171,6 +198,64 @@ async function verifyAdminRequest(request, env) {
   return { ok: true, user };
 }
 
+/* ------------------------------------------------------------------ */
+/* Community helpers: IP hashing, caller identity, input validation    */
+/* ------------------------------------------------------------------ */
+
+function clientIp(request) {
+  return (
+    request.headers.get("CF-Connecting-IP") ||
+    String(request.headers.get("X-Forwarded-For") || "")
+      .split(",")[0]
+      .trim() ||
+    ""
+  );
+}
+
+/* SHA-256 of IP + fixed app salt. The raw IP is never stored or returned. */
+async function hashIp(ip) {
+  const bytes = new TextEncoder().encode(`${IP_SALT}:${ip || "unknown"}`);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/* Optional identity. A bad/missing token must never fail a public write, so
+ * every upstream problem falls back to an anonymous guest. */
+async function resolveViewer(request, env) {
+  const ipHash = await hashIp(clientIp(request));
+  const auth = request.headers.get("Authorization") || "";
+  if (!auth.startsWith("Bearer ")) return { user: null, ipHash, voterKey: `ip:${ipHash}` };
+  const romm = String(env?.ROMM_ORIGIN || "").replace(/\/+$/, "");
+  try {
+    const res = await fetch(`${romm}/api/users/me`, {
+      headers: { Authorization: auth, Accept: "application/json" },
+      signal: AbortSignal.timeout(VIEWER_TIMEOUT_MS),
+    });
+    if (!res.ok) return { user: null, ipHash, voterKey: `ip:${ipHash}` };
+    const user = await res.json();
+    if (!user?.id) return { user: null, ipHash, voterKey: `ip:${ipHash}` };
+    return { user, ipHash, voterKey: `user:${user.id}` };
+  } catch {
+    return { user: null, ipHash, voterKey: `ip:${ipHash}` };
+  }
+}
+
+function viewerName(viewer) {
+  const name = String(viewer?.user?.username || viewer?.user?.display_name || "").trim();
+  return name || "guest";
+}
+
+function cleanText(value, max) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text.length > max ? null : text;
+}
+
+function cleanPlatform(value) {
+  const slug = String(value || "").trim().toLowerCase();
+  if (!slug) return "";
+  return /^[a-z0-9-]{1,32}$/.test(slug) ? slug : null;
+}
+
 export class SignupRelayDO {
   constructor(ctx, env) {
     this.ctx = ctx;
@@ -212,6 +297,49 @@ export class SignupRelayDO {
         refresh_expires_at INTEGER NOT NULL DEFAULT 0
       );
       INSERT OR IGNORE INTO service_auth (id) VALUES (1);
+      CREATE TABLE IF NOT EXISTS reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rom_id INTEGER NOT NULL,
+        rom_title TEXT NOT NULL,
+        platform_slug TEXT,
+        type TEXT NOT NULL,
+        note TEXT,
+        reporter TEXT NOT NULL DEFAULT 'guest',
+        ip_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open'
+      );
+      CREATE INDEX IF NOT EXISTS reports_status ON reports (status, created_at);
+      CREATE INDEX IF NOT EXISTS reports_ip ON reports (ip_hash, created_at);
+      CREATE TABLE IF NOT EXISTS game_notes (
+        rom_id INTEGER PRIMARY KEY,
+        text TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        updated_by TEXT
+      );
+      CREATE TABLE IF NOT EXISTS requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        platform_slug TEXT,
+        note TEXT,
+        requester TEXT NOT NULL DEFAULT 'guest',
+        ip_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open'
+      );
+      CREATE TABLE IF NOT EXISTS request_votes (
+        request_id INTEGER NOT NULL,
+        voter_key TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (request_id, voter_key)
+      );
+      CREATE TABLE IF NOT EXISTS vote_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id INTEGER NOT NULL,
+        ip_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS vote_events_ip ON vote_events (ip_hash, created_at);
     `);
     this.initialized = true;
   }
@@ -377,6 +505,7 @@ export class SignupRelayDO {
     }
 
     try {
+      this.initSchema();
       if (path === "/invite" && request.method === "GET") {
         const settings = await readSettings(this.env);
         if (!settings.registrationEnabled) {
@@ -558,6 +687,321 @@ export class SignupRelayDO {
           await this.mintInvite();
         }
         return json({ ok: true }, 200, request, this.env);
+      }
+
+      /* ------------------------------------------------------------ */
+      /* Broken-game reports                                          */
+      /* ------------------------------------------------------------ */
+
+      if (path === "/reports" && request.method === "POST") {
+        const viewer = await resolveViewer(request, this.env);
+        const body = await readJsonBody(request);
+        const romId = Number(body?.rom_id);
+        const title = cleanText(body?.rom_title, ROM_TITLE_MAX);
+        const platform = cleanPlatform(body?.platform_slug);
+        const type = String(body?.type || "").trim();
+        const note = cleanText(body?.note || "", REPORT_NOTE_MAX);
+
+        if (!Number.isInteger(romId) || romId <= 0) {
+          return json({ detail: "Invalid game id." }, 422, request, this.env);
+        }
+        if (title === null || !title) {
+          return json({ detail: "Missing game title." }, 422, request, this.env);
+        }
+        if (platform === null) {
+          return json({ detail: "Invalid platform." }, 422, request, this.env);
+        }
+        if (!REPORT_TYPES.has(type)) {
+          return json({ detail: "Invalid problem type." }, 422, request, this.env);
+        }
+        if (note === null) {
+          return json({ detail: `Note must be ${REPORT_NOTE_MAX} characters or fewer.` }, 422, request, this.env);
+        }
+
+        const now = Date.now();
+        const recent = this.sql()
+          .exec(
+            "SELECT id FROM reports WHERE ip_hash = ? AND rom_id = ? AND created_at > ? LIMIT 1",
+            viewer.ipHash,
+            romId,
+            now - REPORT_GAME_COOLDOWN_MS,
+          )
+          .toArray();
+        if (recent.length) {
+          return json({ detail: "You already reported this game recently." }, 429, request, this.env);
+        }
+        const daily = this.sql()
+          .exec("SELECT COUNT(*) AS n FROM reports WHERE ip_hash = ? AND created_at > ?", viewer.ipHash, now - DAY_MS)
+          .one();
+        if (Number(daily?.n || 0) >= REPORT_DAILY_MAX) {
+          return json({ detail: "Too many reports today. Try again tomorrow." }, 429, request, this.env);
+        }
+
+        this.sql().exec(
+          `INSERT INTO reports (rom_id, rom_title, platform_slug, type, note, reporter, ip_hash, created_at, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')`,
+          romId,
+          title,
+          platform || null,
+          type,
+          note || null,
+          viewerName(viewer),
+          viewer.ipHash,
+          now,
+        );
+        return json({ ok: true }, 201, request, this.env);
+      }
+
+      if (path === "/reports" && request.method === "GET") {
+        const auth = await this.verifyAdmin(request);
+        if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, this.env);
+
+        const requested = String(url.searchParams.get("status") || "open");
+        const filter = ["open", "resolved", "dismissed", "all"].includes(requested) ? requested : "open";
+        const rows = this.sql()
+          .exec(
+            filter === "all"
+              ? "SELECT * FROM reports ORDER BY created_at DESC, id DESC LIMIT ?"
+              : "SELECT * FROM reports WHERE status = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+            ...(filter === "all" ? [LIST_LIMIT] : [filter, LIST_LIMIT]),
+          )
+          .toArray();
+
+        const groups = new Map();
+        for (const row of rows) {
+          const key = Number(row.rom_id);
+          let group = groups.get(key);
+          if (!group) {
+            group = {
+              rom_id: key,
+              rom_title: row.rom_title,
+              platform_slug: row.platform_slug || null,
+              count: 0,
+              types: {},
+              reports: [],
+            };
+            groups.set(key, group);
+          }
+          group.count += 1;
+          group.types[row.type] = (group.types[row.type] || 0) + 1;
+          group.reports.push({
+            id: Number(row.id),
+            type: row.type,
+            note: row.note || "",
+            reporter: row.reporter || "guest",
+            status: row.status,
+            created_at: Number(row.created_at),
+          });
+        }
+        const openGroups = this.sql()
+          .exec("SELECT COUNT(DISTINCT rom_id) AS n FROM reports WHERE status = 'open'")
+          .one();
+        return json(
+          { status: filter, openGroups: Number(openGroups?.n || 0), groups: [...groups.values()] },
+          200,
+          request,
+          this.env,
+        );
+      }
+
+      {
+        const match = path.match(/^\/reports\/(\d+)\/(resolve|dismiss)$/);
+        if (match && request.method === "POST") {
+          const auth = await this.verifyAdmin(request);
+          if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, this.env);
+          const [report] = this.sql()
+            .exec("SELECT id, rom_id FROM reports WHERE id = ?", Number(match[1]))
+            .toArray();
+          if (!report) return json({ detail: "Report not found." }, 404, request, this.env);
+          const status = match[2] === "resolve" ? "resolved" : "dismissed";
+          this.sql().exec("UPDATE reports SET status = ? WHERE rom_id = ? AND status = 'open'", status, report.rom_id);
+          return json({ ok: true, rom_id: Number(report.rom_id), status }, 200, request, this.env);
+        }
+      }
+
+      /* ------------------------------------------------------------ */
+      /* Per-game admin notes                                         */
+      /* ------------------------------------------------------------ */
+
+      {
+        const match = path.match(/^\/notes\/(\d+)$/);
+        if (match && request.method === "GET") {
+          const [row] = this.sql()
+            .exec("SELECT text, updated_at FROM game_notes WHERE rom_id = ?", Number(match[1]))
+            .toArray();
+          if (!row) return json({ detail: "No note for this game." }, 404, request, this.env);
+          return json({ rom_id: Number(match[1]), text: row.text, updated_at: Number(row.updated_at) }, 200, request, this.env);
+        }
+      }
+
+      if (path === "/notes" && request.method === "POST") {
+        const auth = await this.verifyAdmin(request);
+        if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, this.env);
+        const body = await readJsonBody(request);
+        const romId = Number(body?.rom_id);
+        const text = cleanText(body?.text || "", GAME_NOTE_MAX);
+        if (!Number.isInteger(romId) || romId <= 0) {
+          return json({ detail: "Invalid game id." }, 422, request, this.env);
+        }
+        if (text === null) {
+          return json({ detail: `Note must be ${GAME_NOTE_MAX} characters or fewer.` }, 422, request, this.env);
+        }
+        if (!text) {
+          this.sql().exec("DELETE FROM game_notes WHERE rom_id = ?", romId);
+          return json({ ok: true, rom_id: romId, text: null }, 200, request, this.env);
+        }
+        this.sql().exec(
+          `INSERT INTO game_notes (rom_id, text, updated_at, updated_by) VALUES (?, ?, ?, ?)
+           ON CONFLICT (rom_id) DO UPDATE SET text = excluded.text, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+          romId,
+          text,
+          Date.now(),
+          String(auth.user?.username || "admin"),
+        );
+        return json({ ok: true, rom_id: romId, text }, 200, request, this.env);
+      }
+
+      /* ------------------------------------------------------------ */
+      /* Game request box                                             */
+      /* ------------------------------------------------------------ */
+
+      if (path === "/requests" && request.method === "GET") {
+        const adminList = url.searchParams.get("all") === "1";
+        if (adminList) {
+          const auth = await this.verifyAdmin(request);
+          if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, this.env);
+        }
+        const viewer = await resolveViewer(request, this.env);
+        const rows = this.sql()
+          .exec(
+            `SELECT r.*, (SELECT COUNT(*) FROM request_votes v WHERE v.request_id = r.id) AS votes,
+                    (SELECT COUNT(*) FROM request_votes v WHERE v.request_id = r.id AND v.voter_key = ?) AS voted
+             FROM requests r
+             ${adminList ? "" : "WHERE r.status <> 'denied'"}
+             ORDER BY votes DESC, r.created_at DESC LIMIT ?`,
+            viewer.voterKey,
+            LIST_LIMIT,
+          )
+          .toArray();
+        const openRow = this.sql().exec("SELECT COUNT(*) AS n FROM requests WHERE status = 'open'").one();
+        return json(
+          {
+            openCount: Number(openRow?.n || 0),
+            requests: rows.map((row) => ({
+              id: Number(row.id),
+              title: row.title,
+              platform_slug: row.platform_slug || null,
+              note: row.note || "",
+              requester: row.requester || "guest",
+              status: row.status,
+              created_at: Number(row.created_at),
+              votes: Number(row.votes || 0),
+              voted: Number(row.voted || 0) > 0,
+            })),
+          },
+          200,
+          request,
+          this.env,
+        );
+      }
+
+      if (path === "/requests" && request.method === "POST") {
+        const viewer = await resolveViewer(request, this.env);
+        const body = await readJsonBody(request);
+        const title = cleanText(body?.title, REQUEST_TITLE_MAX);
+        const platform = cleanPlatform(body?.platform_slug);
+        const note = cleanText(body?.note || "", REQUEST_NOTE_MAX);
+
+        if (title === null) {
+          return json({ detail: `Title must be ${REQUEST_TITLE_MAX} characters or fewer.` }, 422, request, this.env);
+        }
+        if (!title) return json({ detail: "Enter a game title." }, 422, request, this.env);
+        if (platform === null) return json({ detail: "Invalid platform." }, 422, request, this.env);
+        if (note === null) {
+          return json({ detail: `Note must be ${REQUEST_NOTE_MAX} characters or fewer.` }, 422, request, this.env);
+        }
+
+        const now = Date.now();
+        const daily = this.sql()
+          .exec("SELECT COUNT(*) AS n FROM requests WHERE ip_hash = ? AND created_at > ?", viewer.ipHash, now - DAY_MS)
+          .one();
+        if (Number(daily?.n || 0) >= REQUEST_DAILY_MAX) {
+          return json({ detail: "Too many game requests today. Try again tomorrow." }, 429, request, this.env);
+        }
+
+        this.sql().exec(
+          `INSERT INTO requests (title, platform_slug, note, requester, ip_hash, created_at, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'open')`,
+          title,
+          platform || null,
+          note || null,
+          viewerName(viewer),
+          viewer.ipHash,
+          now,
+        );
+        return json({ ok: true }, 201, request, this.env);
+      }
+
+      {
+        const match = path.match(/^\/requests\/(\d+)\/vote$/);
+        if (match && request.method === "POST") {
+          const id = Number(match[1]);
+          const viewer = await resolveViewer(request, this.env);
+          const now = Date.now();
+          const recent = this.sql()
+            .exec("SELECT COUNT(*) AS n FROM vote_events WHERE ip_hash = ? AND created_at > ?", viewer.ipHash, now - DAY_MS)
+            .one();
+          if (Number(recent?.n || 0) >= VOTE_DAILY_MAX) {
+            return json({ detail: "Too many votes today. Try again tomorrow." }, 429, request, this.env);
+          }
+          const exists = this.sql().exec("SELECT id FROM requests WHERE id = ?", id).toArray();
+          if (!exists.length) return json({ detail: "Request not found." }, 404, request, this.env);
+
+          const voted = this.sql()
+            .exec("SELECT 1 AS hit FROM request_votes WHERE request_id = ? AND voter_key = ?", id, viewer.voterKey)
+            .toArray();
+          if (voted.length) {
+            this.sql().exec("DELETE FROM request_votes WHERE request_id = ? AND voter_key = ?", id, viewer.voterKey);
+          } else {
+            this.sql().exec(
+              "INSERT OR REPLACE INTO request_votes (request_id, voter_key, created_at) VALUES (?, ?, ?)",
+              id,
+              viewer.voterKey,
+              now,
+            );
+          }
+          this.sql().exec("INSERT INTO vote_events (request_id, ip_hash, created_at) VALUES (?, ?, ?)", id, viewer.ipHash, now);
+          this.sql().exec("DELETE FROM vote_events WHERE created_at < ?", now - VOTE_RETENTION_MS);
+          const count = this.sql().exec("SELECT COUNT(*) AS n FROM request_votes WHERE request_id = ?", id).one();
+          return json({ ok: true, request_id: id, votes: Number(count?.n || 0), voted: !voted.length }, 200, request, this.env);
+        }
+      }
+
+      {
+        const match = path.match(/^\/requests\/(\d+)\/status$/);
+        if (match && request.method === "POST") {
+          const auth = await this.verifyAdmin(request);
+          if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, this.env);
+          const body = await readJsonBody(request);
+          const status = String(body?.status || "").trim();
+          if (!REQUEST_STATUSES.has(status)) {
+            return json({ detail: "Invalid request status." }, 422, request, this.env);
+          }
+          this.sql().exec("UPDATE requests SET status = ? WHERE id = ?", status, Number(match[1]));
+          return json({ ok: true, request_id: Number(match[1]), status }, 200, request, this.env);
+        }
+      }
+
+      {
+        const match = path.match(/^\/requests\/(\d+)$/);
+        if (match && request.method === "DELETE") {
+          const auth = await this.verifyAdmin(request);
+          if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, this.env);
+          const id = Number(match[1]);
+          this.sql().exec("DELETE FROM request_votes WHERE request_id = ?", id);
+          this.sql().exec("DELETE FROM requests WHERE id = ?", id);
+          return json({ ok: true, request_id: id }, 200, request, this.env);
+        }
       }
 
       if (path === "/admin/state" && request.method === "GET") {

@@ -42,7 +42,13 @@ async function checkRelayDO() {
       const stmt = db.prepare(query);
       if (/^\s*SELECT/i.test(query)) {
         return {
-          one: () => stmt.get(...params),
+          /* DO SQLite cursor.one() throws when the result is empty; mirror that
+           * so missing-row bugs fail here instead of only in production. */
+          one: () => {
+            const row = stmt.get(...params);
+            if (row === undefined) throw new Error("no rows");
+            return row;
+          },
           toArray: () => stmt.all(...params),
         };
       }
@@ -453,7 +459,266 @@ async function checkTrialProxy() {
   }
 }
 
+/* Community features: reports, per-game notes, game request box. */
+async function checkCommunityDO() {
+  const db = new DatabaseSync(":memory:");
+  const sql = {
+    exec(query, ...params) {
+      if (params.length === 0 && /CREATE TABLE|CREATE INDEX|INSERT OR IGNORE/i.test(query)) {
+        db.exec(query);
+        return { one: () => undefined, toArray: () => [] };
+      }
+      const stmt = db.prepare(query);
+      if (/^\s*SELECT/i.test(query)) {
+        return {
+          /* DO SQLite cursor.one() throws when the result is empty; mirror that
+           * so missing-row bugs fail here instead of only in production. */
+          one: () => {
+            const row = stmt.get(...params);
+            if (row === undefined) throw new Error("no rows");
+            return row;
+          },
+          toArray: () => stmt.all(...params),
+        };
+      }
+      stmt.run(...params);
+      return { one: () => undefined, toArray: () => [] };
+    },
+  };
+
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const target = String(url);
+    const auth = init.headers?.Authorization || init.headers?.authorization || "";
+    if (target.endsWith("/api/users/me")) {
+      if (auth === "Bearer admin-jwt") {
+        return new Response(JSON.stringify({ id: 1, username: "admin", role: "admin" }), { status: 200 });
+      }
+      if (auth === "Bearer user-jwt") {
+        return new Response(JSON.stringify({ id: 2, username: "player", role: "user" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ detail: "Unauthorized" }), { status: 401 });
+    }
+    throw new Error(`Unexpected fetch in community test: ${target}`);
+  };
+
+  try {
+    const relay = new SignupRelayDO(
+      { storage: { sql } },
+      {
+        ROMM_ORIGIN: "https://romm.test",
+        ALLOWED_ORIGINS: "https://crymises.github.io",
+        SETTINGS: { async get() { return ""; } },
+      },
+    );
+
+    const call = (path, { method = "GET", body, token, ip = "10.0.0.1" } = {}) =>
+      relay.fetch(
+        new Request(`https://relay.test${path}`, {
+          method,
+          headers: {
+            Origin: "https://crymises.github.io",
+            "CF-Connecting-IP": ip,
+            ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        }),
+      );
+
+    /* Notes */
+    const noteMissing = await (await call("/notes/42")).json();
+    const noteNoAuth = await call("/notes", { method: "POST", body: { rom_id: 42, text: "PC only" } });
+    const noteNonAdmin = await call("/notes", { method: "POST", body: { rom_id: 42, text: "PC only" }, token: "user-jwt" });
+    const noteSaved = await call("/notes", { method: "POST", body: { rom_id: 42, text: "PC only · stylus" }, token: "admin-jwt" });
+    const notePublic = await (await call("/notes/42")).json();
+    const noteTooLong = await call("/notes", {
+      method: "POST",
+      body: { rom_id: 42, text: "x".repeat(201) },
+      token: "admin-jwt",
+    });
+    const noteCleared = await call("/notes", { method: "POST", body: { rom_id: 42, text: "  " }, token: "admin-jwt" });
+    const noteAfterClear = await call("/notes/42");
+
+    /* Reports */
+    const reportGuest = await call("/reports", {
+      method: "POST",
+      body: { rom_id: 42, rom_title: "Trial ROM", platform_slug: "gba", type: "black_screen", note: "Only audio." },
+    });
+    const reportDuplicate = await call("/reports", {
+      method: "POST",
+      body: { rom_id: 42, rom_title: "Trial ROM", platform_slug: "gba", type: "black_screen" },
+    });
+    const reportUser = await call("/reports", {
+      method: "POST",
+      body: { rom_id: 99, rom_title: "Other ROM", platform_slug: "nds", type: "controls" },
+      token: "user-jwt",
+      ip: "10.0.0.2",
+    });
+    const reportBadType = await call("/reports", {
+      method: "POST",
+      body: { rom_id: 100, rom_title: "Bad", type: "explode" },
+      ip: "10.0.0.3",
+    });
+    const reportBadNote = await call("/reports", {
+      method: "POST",
+      body: { rom_id: 101, rom_title: "Bad note", type: "other", note: "x".repeat(201) },
+      ip: "10.0.0.4",
+    });
+    const reportsPublic = await call("/reports");
+    const reportsNonAdmin = await call("/reports", { token: "user-jwt" });
+    const reportsAdminRes = await call("/reports", { token: "admin-jwt" });
+    const reportsAdmin = await reportsAdminRes.json();
+    const firstGroup = reportsAdmin.groups?.[0];
+
+    const resolveNoAuth = await call(`/reports/${firstGroup?.reports?.[0]?.id}/resolve`, { method: "POST" });
+    const resolveNoGroup = firstGroup
+      ? await call(`/reports/${firstGroup.reports[0].id}/resolve`, { method: "POST", token: "admin-jwt" })
+      : null;
+    const resolvedGroup = await (await call(`/reports?status=resolved`, { token: "admin-jwt" })).json();
+    const openAfterResolve = await (await call("/reports?status=open", { token: "admin-jwt" })).json();
+
+    /* Fill the daily report cap for 10.0.0.1, then expect 429. */
+    let dailyReportLimit = false;
+    for (let rom = 100; rom < 109; rom += 1) {
+      const res = await call("/reports", {
+        method: "POST",
+        body: { rom_id: rom, rom_title: `Filler ${rom}`, type: "other" },
+      });
+      if (res.status === 429) dailyReportLimit = false;
+    }
+    const overDailyReport = await call("/reports", {
+      method: "POST",
+      body: { rom_id: 109, rom_title: "Filler 109", type: "other" },
+    });
+    dailyReportLimit = overDailyReport.status === 429;
+
+    /* Requests + votes */
+    const requestCreated = await call("/requests", {
+      method: "POST",
+      body: { title: "Chrono Trigger", platform_slug: "snes", note: "Please." },
+      token: "user-jwt",
+      ip: "20.0.0.1",
+    });
+    const requestListRes = await call("/requests", { ip: "20.0.0.2" });
+    const requestList = await requestListRes.json();
+    const createdRow = requestList.requests?.[0];
+
+    const voteUp = await (await call(`/requests/${createdRow?.id}/vote`, { method: "POST", ip: "20.0.0.2" })).json();
+    const voteDown = await (await call(`/requests/${createdRow?.id}/vote`, { method: "POST", ip: "20.0.0.2" })).json();
+    const voteUser = await (await call(`/requests/${createdRow?.id}/vote`, { method: "POST", token: "user-jwt", ip: "20.0.0.3" })).json();
+    const voteUserAgain = await (await call(`/requests/${createdRow?.id}/vote`, { method: "POST", token: "user-jwt", ip: "20.0.0.3" })).json();
+
+    let requestDaily = false;
+    for (let i = 0; i < 5; i += 1) {
+      await call("/requests", { method: "POST", body: { title: `Spam ${i}` }, ip: "20.0.0.4" });
+    }
+    const sixthRequest = await call("/requests", { method: "POST", body: { title: "Spam 5" }, ip: "20.0.0.4" });
+    requestDaily = sixthRequest.status === 429;
+
+    let voteDaily = false;
+    for (let i = 0; i < 31; i += 1) {
+      const res = await call(`/requests/${createdRow?.id}/vote`, { method: "POST", ip: "20.0.0.5" });
+      if (res.status === 429) {
+        voteDaily = true;
+        break;
+      }
+    }
+
+    const statusNoAuth = await call(`/requests/${createdRow?.id}/status`, {
+      method: "POST",
+      body: { status: "planned" },
+    });
+    const statusBad = await call(`/requests/${createdRow?.id}/status`, {
+      method: "POST",
+      body: { status: "nope" },
+      token: "admin-jwt",
+    });
+    const statusDenied = await call(`/requests/${createdRow?.id}/status`, {
+      method: "POST",
+      body: { status: "denied" },
+      token: "admin-jwt",
+      ip: "20.0.0.6",
+    });
+    const publicAfterDeny = await (await call("/requests", { ip: "20.0.0.7" })).json();
+    const adminList = await (await call("/requests?all=1", { token: "admin-jwt", ip: "20.0.0.8" })).json();
+    const nonAdminAll = await call("/requests?all=1", { token: "user-jwt", ip: "20.0.0.9" });
+    await call(`/requests/${createdRow?.id}/vote`, { method: "POST", ip: "20.0.0.12" });
+    const deleteNoAuth = await call(`/requests/${createdRow?.id}`, { method: "DELETE", ip: "20.0.0.10" });
+    const deleteAdmin = await call(`/requests/${createdRow?.id}`, { method: "DELETE", token: "admin-jwt", ip: "20.0.0.10" });
+    const afterDelete = await (await call("/requests", { ip: "20.0.0.11" })).json();
+    const votesLeft = db.prepare("SELECT COUNT(*) AS n FROM request_votes WHERE request_id = ?").get(createdRow?.id);
+
+    const reportsJson = JSON.stringify(reportsAdmin);
+    const requestsJson = JSON.stringify(requestList);
+
+    return {
+      noteLifecycle:
+        noteMissing.detail === "No note for this game." &&
+        noteNoAuth.status === 401 &&
+        noteNonAdmin.status === 403 &&
+        noteSaved.status === 200 &&
+        notePublic.text === "PC only · stylus" &&
+        noteTooLong.status === 422 &&
+        noteCleared.status === 200 &&
+        noteAfterClear.status === 404,
+      reportValidation:
+        reportGuest.status === 201 &&
+        reportDuplicate.status === 429 &&
+        reportUser.status === 201 &&
+        reportBadType.status === 422 &&
+        reportBadNote.status === 422,
+      reportsGrouped:
+        reportsPublic.status === 401 &&
+        reportsNonAdmin.status === 403 &&
+        reportsAdminRes.status === 200 &&
+        reportsAdmin.groups?.length === 2 &&
+        reportsAdmin.openGroups === 2 &&
+        reportsAdmin.groups[0].rom_id === 99 &&
+        reportsAdmin.groups[0].reports[0].reporter === "player" &&
+        reportsAdmin.groups[1].reports[0].reporter === "guest" &&
+        !reportsJson.includes("ip_hash"),
+      resolveClearsGroup:
+        resolveNoAuth.status === 401 &&
+        resolveNoGroup?.status === 200 &&
+        resolvedGroup.groups?.length === 1 &&
+        resolvedGroup.groups[0].count === 1 &&
+        openAfterResolve.groups?.length === 1,
+      reportDailyCap: dailyReportLimit,
+      requestAndVotes:
+        requestCreated.status === 201 &&
+        requestListRes.status === 200 &&
+        createdRow?.requester === "player" &&
+        voteUp.votes === 1 &&
+        voteUp.voted === true &&
+        voteDown.votes === 0 &&
+        voteDown.voted === false &&
+        voteUser.votes === 1 &&
+        voteUserAgain.votes === 0 &&
+        !requestsJson.includes("ip_hash"),
+      requestDailyCap: requestDaily,
+      voteDailyCap: voteDaily,
+      adminRequestTools:
+        statusNoAuth.status === 401 &&
+        statusBad.status === 422 &&
+        statusDenied.status === 200 &&
+        publicAfterDeny.requests.every((row) => row.id !== createdRow?.id) &&
+        adminList.requests.some((row) => row.id === createdRow?.id && row.status === "denied") &&
+        nonAdminAll.status === 403 &&
+        deleteNoAuth.status === 401 &&
+        deleteAdmin.status === 200 &&
+        !afterDelete.requests.some((row) => row.id === createdRow?.id) &&
+        Number(votesLeft?.n || 0) === 0,
+    };
+  } finally {
+    globalThis.fetch = origFetch;
+    db.close();
+  }
+}
+
+
 const relayChecks = await checkRelayDO();
+const communityChecks = await checkCommunityDO();
 const settingsChecks = await checkSettings();
 const trialProxyChecks = await checkTrialProxy();
 
@@ -630,6 +895,16 @@ const checks = [
   ["Relay DO proxies register with CSRF cookie", relayChecks.registerProxiesCsrf],
   ["Relay DO disable clears and blocks claims", relayChecks.disableClearsAndBlocks],
   ["Relay DO closed registration blocks invite/claim/register", relayChecks.closedRegistrationBlocksAll],
+
+  ["Community notes save, read, and delete", communityChecks.noteLifecycle],
+  ["Community reports validate input and throttle repeats", communityChecks.reportValidation],
+  ["Community reports group by game without leaking identity", communityChecks.reportsGrouped],
+  ["Community report resolve clears the whole group", communityChecks.resolveClearsGroup],
+  ["Community report daily cap", communityChecks.reportDailyCap],
+  ["Community requests post and toggle votes", communityChecks.requestAndVotes],
+  ["Community request daily cap", communityChecks.requestDailyCap],
+  ["Community vote daily cap", communityChecks.voteDailyCap],
+  ["Community admin request tools", communityChecks.adminRequestTools],
 
   ["Worker settings defaults", settingsChecks.defaultsOk],
   ["Worker settings POST requires auth", settingsChecks.postNeedsAuth],

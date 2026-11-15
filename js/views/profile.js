@@ -19,6 +19,7 @@ import {
   langSwitch,
   loadingLine,
   siteFooter,
+  timeAgo,
   toast,
 } from "../components.js";
 import {
@@ -31,6 +32,22 @@ import {
 import { logout, userInitials, userLabel } from "../auth.js";
 import { t } from "../i18n.js";
 import { createSignupPanel } from "./signup.js";
+
+const REPORT_TYPE_LABELS = {
+  wont_load: "Won't load",
+  black_screen: "Black screen",
+  controls: "Controls don't work",
+  no_sound: "No sound",
+  save_problem: "Save problem",
+  other: "Other",
+};
+
+const REQUEST_STATUS_LABELS = {
+  open: "Open request",
+  planned: "Planned",
+  added: "Added",
+  denied: "Denied",
+};
 
 export function profileView() {
   const session = getSession();
@@ -600,6 +617,224 @@ export function adminView() {
       });
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Community moderation: broken-game reports + game requests        */
+  /* ---------------------------------------------------------------- */
+
+  const communityAbort = new AbortController();
+  let reportGroups = [];
+  let requestRows = [];
+
+  const reportsBadge = el("span", { class: "admin-badge", hidden: "" });
+  const requestsBadge = el("span", { class: "admin-badge", hidden: "" });
+  const reportsBody = el("div", { class: "admin-queue" }, loadingLine(t("Loading reports…")));
+  const requestsBody = el("div", { class: "admin-queue" }, loadingLine(t("Loading requests…")));
+
+  const typeLabel = (type) => t(REPORT_TYPE_LABELS[type] || "Other");
+
+  function renderReports() {
+    clear(reportsBody);
+    reportsBadge.textContent = String(reportGroups.length);
+    reportsBadge.hidden = !reportGroups.length;
+    if (!reportGroups.length) {
+      reportsBody.append(el("p", { class: "note admin-queue-empty" }, t("No open reports. Nice.")));
+      return;
+    }
+    reportGroups.forEach((group) => {
+      const wall = el("div", { class: "admin-report-entries" });
+      group.reports.forEach((report) => {
+        wall.append(
+          el(
+            "div",
+            { class: "admin-report-entry" },
+            el("span", { class: "admin-report-type" }, typeLabel(report.type)),
+            el("span", { class: "admin-report-reporter" }, t("by {name}", { name: report.reporter })),
+            el("span", { class: "admin-report-time" }, timeAgo(report.created_at)),
+            report.note ? el("p", { class: "admin-report-note" }, report.note) : null,
+          ),
+        );
+      });
+
+      const act = async (action) => {
+        try {
+          await api.resolveReport(group.reports[0].id, action);
+          reportGroups = reportGroups.filter((item) => item !== group);
+          renderReports();
+          toast(action === "dismiss" ? t("Report dismissed.") : t("Report resolved."), { tone: "success" });
+        } catch (error) {
+          toast(error.message || t("Couldn't update the report."), { tone: "error" });
+        }
+      };
+
+      reportsBody.append(
+        el(
+          "details",
+          { class: "admin-report-group" },
+          el(
+            "summary",
+            {},
+            el(
+              "span",
+              { class: "admin-report-head" },
+              el("strong", {}, group.rom_title || t("Game {id}", { id: group.rom_id })),
+              el("span", { class: "admin-report-count" }, t("{n} reports", { n: group.count })),
+            ),
+            el(
+              "span",
+              { class: "admin-report-types" },
+              Object.entries(group.types)
+                .map(([type, count]) => `${typeLabel(type)}${count > 1 ? ` ×${count}` : ""}`)
+                .join(" · "),
+            ),
+          ),
+          el(
+            "div",
+            { class: "admin-report-actions" },
+            el(
+              "button",
+              { class: "btn btn-keycap-sm btn-mint", type: "button", on: { click: () => act("resolve") } },
+              icon("save", 14),
+              t("Resolve"),
+            ),
+            el(
+              "button",
+              { class: "btn btn-keycap-sm btn-ghost", type: "button", on: { click: () => act("dismiss") } },
+              t("Dismiss"),
+            ),
+            el(
+              "a",
+              { class: "btn btn-keycap-sm btn-quiet", href: `#/game/${encodeURIComponent(group.rom_id)}` },
+              t("Open game"),
+              icon("arrow-right", 14),
+            ),
+          ),
+          wall,
+        ),
+      );
+    });
+  }
+
+  function renderRequests() {
+    clear(requestsBody);
+    const openCount = requestRows.filter((row) => row.status === "open").length;
+    requestsBadge.textContent = String(openCount);
+    requestsBadge.hidden = !openCount;
+    if (!requestRows.length) {
+      requestsBody.append(el("p", { class: "note admin-queue-empty" }, t("No game requests yet.")));
+      return;
+    }
+    requestRows.forEach((row) => {
+      const busy = new Set();
+      const act = async (status) => {
+        if (busy.has(status)) return;
+        busy.add(status);
+        try {
+          const saved = await api.setRequestStatus(row.id, status);
+          row.status = saved.status;
+          renderRequests();
+          toast(t("Request marked {status}.", { status: t(REQUEST_STATUS_LABELS[status]) }), { tone: "success" });
+        } catch (error) {
+          toast(error.message || t("Couldn't update the request."), { tone: "error" });
+        } finally {
+          busy.delete(status);
+        }
+      };
+
+      const statusButton = (status, label) =>
+        row.status === status
+          ? null
+          : el(
+              "button",
+              { class: "btn btn-keycap-sm btn-ghost", type: "button", on: { click: () => act(status) } },
+              label,
+            );
+
+      requestsBody.append(
+        el(
+          "article",
+          { class: `admin-request${row.status === "denied" ? " is-denied" : ""}` },
+          el(
+            "div",
+            { class: "admin-request-head" },
+            el("strong", {}, row.title),
+            el("span", { class: `chip-cat admin-request-status status-${row.status}` }, t(REQUEST_STATUS_LABELS[row.status] || "Open")),
+            el("span", { class: "admin-request-votes" }, t("{n} votes", { n: row.votes })),
+          ),
+          el(
+            "p",
+            { class: "admin-request-meta" },
+            [
+              row.platform_slug ? String(row.platform_slug).toUpperCase() : null,
+              t("by {name}", { name: row.requester || t("Guest") }),
+              timeAgo(row.created_at),
+            ]
+              .filter(Boolean)
+              .join(" · "),
+          ),
+          row.note ? el("p", { class: "admin-request-note" }, row.note) : null,
+          el(
+            "div",
+            { class: "admin-request-actions" },
+            statusButton("planned", t("Plan")),
+            statusButton("added", t("Mark added")),
+            statusButton("denied", t("Deny")),
+            statusButton("open", t("Reopen")),
+            el(
+              "button",
+              {
+                class: "btn btn-keycap-sm btn-ghost admin-request-delete",
+                type: "button",
+                on: {
+                  click: async () => {
+                    if (!window.confirm(t("Delete this request and its votes?"))) return;
+                    try {
+                      await api.deleteRequest(row.id);
+                      requestRows = requestRows.filter((item) => item !== row);
+                      renderRequests();
+                      toast(t("Request deleted."), { tone: "success" });
+                    } catch (error) {
+                      toast(error.message || t("Couldn't delete the request."), { tone: "error" });
+                    }
+                  },
+                },
+              },
+              icon("close", 14),
+              t("Delete"),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  if (roleAdmin) {
+    api
+      .adminReports({ signal: communityAbort.signal })
+      .then((payload) => {
+        if (disposed) return;
+        reportGroups = Array.isArray(payload?.groups) ? payload.groups : [];
+        renderReports();
+      })
+      .catch((error) => {
+        if (error?.name === "AbortError" || disposed) return;
+        clear(reportsBody);
+        reportsBody.append(el("p", { class: "note admin-queue-empty" }, t("Reports unavailable right now.")));
+      });
+
+    api
+      .requests({ all: true, signal: communityAbort.signal })
+      .then((payload) => {
+        if (disposed) return;
+        requestRows = Array.isArray(payload?.requests) ? payload.requests : [];
+        renderRequests();
+      })
+      .catch((error) => {
+        if (error?.name === "AbortError" || disposed) return;
+        clear(requestsBody);
+        requestsBody.append(el("p", { class: "note admin-queue-empty" }, t("Requests unavailable right now.")));
+      });
+  }
+
   root.append(
     el(
       "section",
@@ -654,6 +889,36 @@ export function adminView() {
           signupSlot,
         )
       : null,
+    roleAdmin
+      ? el(
+          "section",
+          { class: "block admin-queue-block" },
+          el("div", { class: "eyebrow" }, t("Community")),
+          el(
+            "div",
+            { class: "admin-queue-head" },
+            el("h2", { class: "marker marker-sm" }, t("Broken-game reports")),
+            reportsBadge,
+          ),
+          el("p", { class: "note" }, t("Grouped by game. Resolving one report clears the whole group.")),
+          reportsBody,
+        )
+      : null,
+    roleAdmin
+      ? el(
+          "section",
+          { class: "block admin-queue-block" },
+          el("div", { class: "eyebrow" }, t("Community")),
+          el(
+            "div",
+            { class: "admin-queue-head" },
+            el("h2", { class: "marker marker-sm" }, t("Game requests")),
+            requestsBadge,
+          ),
+          el("p", { class: "note" }, t("Sorted by votes. Denied requests stay hidden from players.")),
+          requestsBody,
+        )
+      : null,
     el(
       "section",
       { class: "block stub-card" },
@@ -688,6 +953,7 @@ export function adminView() {
     el: root,
     cleanup() {
       disposed = true;
+      communityAbort.abort();
       signupStateController?.abort();
       closeSignupPanel();
       for (const url of blobUrls) URL.revokeObjectURL(url);

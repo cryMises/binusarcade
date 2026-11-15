@@ -75,4 +75,34 @@ export default {
   "Game details": "Detail game",
   About: "Tentang",
   "More on this system": "Lainnya di sistem ini",
+
+  /* Community: admin note + broken-game report */
+  "Admin note": "Catatan admin",
+  "Add note": "Tambah catatan",
+  "Edit note": "Edit catatan",
+  "Report a problem": "Laporkan masalah",
+  "Choose a problem": "Pilih masalah",
+  "Problem": "Masalah",
+  "Anything else? Optional": "Ada info lain? Opsional",
+  "The admin sees your report and can fix the game.":
+    "Admin melihat laporanmu dan bisa memperbaiki game ini.",
+  "Send report": "Kirim laporan",
+  "Sending…": "Mengirim…",
+  "Pick a problem type.": "Pilih jenis masalahnya.",
+  "Thanks — the admin will take a look.": "Terima kasih — admin akan mengeceknya.",
+  "Couldn't send the report.": "Gagal mengirim laporan.",
+  "PC only, stylus game, switch to DeSmuME on phones…":
+    "Hanya PC, game pakai stylus, ganti ke DeSmuME di ponsel…",
+  "Everyone sees this note on the game page. Save an empty note to remove it.":
+    "Semua orang melihat catatan ini di halaman game. Simpan kosong untuk menghapusnya.",
+  "Save note": "Simpan catatan",
+  "Note saved.": "Catatan disimpan.",
+  "Note removed.": "Catatan dihapus.",
+  "Couldn't save the note.": "Gagal menyimpan catatan.",
+  "Won't load": "Tidak mau load",
+  "Black screen": "Layar hitam",
+  "Controls don't work": "Kontrol tidak berfungsi",
+  "No sound": "Tidak ada suara",
+  "Save problem": "Masalah save",
+  "Other": "Lainnya",
 };

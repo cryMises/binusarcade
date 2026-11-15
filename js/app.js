@@ -17,6 +17,7 @@ import { homeView } from "./views/home.js";
 import { libraryView } from "./views/library.js";
 import { shelfView } from "./views/shelf.js";
 import { registerView } from "./views/register.js";
+import { requestView } from "./views/request.js";
 import { signupView } from "./views/signup.js";
 import { shortPlatformLabel } from "./config.js";
 import { fetchTrialSettings, resolveTrial, trialView } from "./views/trial.js";
@@ -84,6 +85,14 @@ async function renderSignedOut() {
     registerCleanup = view?.cleanup || null;
     app.replaceChildren(view?.el || view);
     document.title = `${t("Try one game")} · Binus Arcade`;
+    return;
+  }
+
+  if (path === "/request") {
+    registerCleanup?.();
+    registerCleanup = null;
+    app.replaceChildren(requestView());
+    document.title = `${t("Request a game")} · Binus Arcade`;
     return;
   }
 
@@ -556,6 +565,7 @@ function mountShell() {
     addRoute("/game/:id", detailView);
     addRoute("/shelf", shelfView);
     addRoute("/scores", scoresView);
+    addRoute("/request", requestView);
     addRoute("/me", profileView);
     addRoute("/admin", adminView);
     addRoute("/signup", signupView);

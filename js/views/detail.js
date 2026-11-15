@@ -1,6 +1,7 @@
-import { api, coverUrl, isAbortError } from "../api.js";
+import { api, coverUrl, isAbortError, isRoleAdmin, getSession, hasSignupRelay } from "../api.js";
 import {
   clear,
+  closeModal,
   cover,
   el,
   errorState,
@@ -11,6 +12,7 @@ import {
   icon,
   loadingLine,
   miniLedger,
+  openModal,
   platformDeviceImage,
   screenshotModal,
   screenshotUrl,
@@ -92,13 +94,16 @@ export function detailView(ctx) {
       null;
 
     clear(root);
+    const community = el("div", { class: "detail-community" });
     root.append(backLink(platformSlug, rom), buildHero({ rom, platformSlug, accent, name }));
+    root.append(community);
     root.append(buildLedgers({ rom, playtime, lastPlayed, saves, states }));
     root.append(
       buildTabs({ rom, saves, states, sessions, playtime, lastPlayed }),
     );
     root.append(buildFootlinks(rom));
     root.append(siteFooter());
+    void loadCommunity(community, rom);
   })();
 
   return root;
@@ -197,8 +202,7 @@ function buildHero({ rom, platformSlug, accent, name }) {
   );
 }
 
-function buildLedgers({ rom, playtime, lastPlayed, saves, states }) {
-  return el(
+function buildLedgers({ rom, playtime, lastPlayed, saves, states }) {  return el(
     "section",
     { class: "detail-ledger", "aria-label": t("Game facts") },
     miniLedger(t("Playtime"), formatPlaytime(playtime), sessionsText(playtime)),
@@ -218,6 +222,188 @@ function buildLedgers({ rom, playtime, lastPlayed, saves, states }) {
       states.length ? formatDate(states[0].updated_at || states[0].created_at) : t("None on RomM"),
     ),
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Community: admin note callout + broken-game report                  */
+/* ------------------------------------------------------------------ */
+
+const REPORT_REASONS = [
+  ["wont_load", "Won't load"],
+  ["black_screen", "Black screen"],
+  ["controls", "Controls don't work"],
+  ["no_sound", "No sound"],
+  ["save_problem", "Save problem"],
+  ["other", "Other"],
+];
+
+async function loadCommunity(container, rom) {
+  if (!hasSignupRelay()) return;
+
+  const admin = isRoleAdmin(getSession());
+  const stored = await api.gameNote(rom.id).catch(() => null);
+  if (!container.isConnected) return;
+
+  const callout = el("aside", { class: "game-note", role: "note" });
+  const actions = el("div", { class: "detail-community-actions" });
+  let note = stored;
+
+  const renderNote = () => {
+    callout.replaceChildren();
+    callout.hidden = !note?.text;
+    if (!note?.text) return;
+    callout.append(
+      el("span", { class: "game-note-icon" }, icon("book", 17, t("Admin note"))),
+      el(
+        "div",
+        { class: "game-note-copy" },
+        el("strong", {}, t("Admin note")),
+        el("p", {}, note.text),
+      ),
+    );
+  };
+
+  renderNote();
+
+  const editLabel = el("span", {}, note?.text ? t("Edit note") : t("Add note"));
+  const editButton = admin
+    ? el(
+        "button",
+        {
+          class: "btn btn-keycap-sm btn-ghost",
+          type: "button",
+          "data-note-edit": "",
+          on: {
+            click: () =>
+              openNoteEditor(rom, note, (saved) => {
+                note = saved;
+                editLabel.textContent = note?.text ? t("Edit note") : t("Add note");
+                renderNote();
+              }),
+          },
+        },
+        icon("book", 15),
+        editLabel,
+      )
+    : null;
+
+  actions.append(
+    el(
+      "button",
+      {
+        class: "btn btn-keycap-sm btn-ghost",
+        type: "button",
+        "data-report-open": "",
+        on: { click: () => openReportForm(rom) },
+      },
+      icon("alert", 15),
+      t("Report a problem"),
+    ),
+    editButton,
+  );
+
+  container.append(callout, actions);
+}
+
+function openReportForm(rom) {
+  const status = el("p", { class: "field-hint", role: "status" });
+  const select = el(
+    "select",
+    { class: "input", id: "report-type", required: "" },
+    el("option", { value: "" }, t("Choose a problem")),
+    ...REPORT_REASONS.map(([value, label]) => el("option", { value }, t(label))),
+  );
+  const note = el("textarea", {
+    class: "input",
+    rows: "3",
+    maxlength: "200",
+    placeholder: t("Anything else? Optional"),
+    "aria-label": t("Note"),
+  });
+  const content = el(
+    "div",
+    { class: "field-stack" },
+    el("label", { class: "field", for: "report-type" }, el("span", { class: "field-label" }, t("Problem")), select),
+    el("label", { class: "field" }, el("span", { class: "field-label" }, t("Note")), note),
+    el("p", { class: "field-hint" }, t("The admin sees your report and can fix the game.")),
+    status,
+  );
+
+  const submit = el("button", { class: "btn btn-primary", type: "button" }, t("Send report"));
+  submit.addEventListener("click", async () => {
+    if (!select.value) {
+      status.textContent = t("Pick a problem type.");
+      return;
+    }
+    submit.disabled = true;
+    submit.textContent = t("Sending…");
+    try {
+      await api.reportProblem({
+        rom_id: rom.id,
+        rom_title: rom.name || rom.fs_name_no_ext || t("Untitled cartridge"),
+        platform_slug: rom.platform_slug || platformSlugOf(rom),
+        type: select.value,
+        note: note.value.trim(),
+      });
+      closeModal();
+      toast(t("Thanks — the admin will take a look."), { tone: "success" });
+    } catch (error) {
+      submit.disabled = false;
+      submit.textContent = t("Send report");
+      status.textContent = error.message || t("Couldn't send the report.");
+    }
+  });
+
+  openModal({
+    title: t("Report a problem"),
+    content,
+    actions: [
+      el("button", { class: "btn btn-ghost", type: "button", on: { click: closeModal } }, t("Cancel")),
+      submit,
+    ],
+  });
+}
+
+function openNoteEditor(rom, current, onSaved) {
+  const status = el("p", { class: "field-hint", role: "status" });
+  const text = el("textarea", {
+    class: "input",
+    rows: "3",
+    maxlength: "200",
+    "aria-label": t("Admin note"),
+    placeholder: t("PC only, stylus game, switch to DeSmuME on phones…"),
+  });
+  text.value = current?.text || "";
+  const content = el(
+    "div",
+    { class: "field-stack" },
+    el("label", { class: "field" }, el("span", { class: "field-label" }, t("Note")), text),
+    el("p", { class: "field-hint" }, t("Everyone sees this note on the game page. Save an empty note to remove it.")),
+    status,
+  );
+
+  const submit = el("button", { class: "btn btn-primary", type: "button" }, t("Save note"));
+  submit.addEventListener("click", async () => {
+    submit.disabled = true;
+    try {
+      const saved = await api.saveGameNote(rom.id, text.value.trim());
+      closeModal();
+      onSaved(saved?.text ? saved : null);
+      toast(saved?.text ? t("Note saved.") : t("Note removed."), { tone: "success" });
+    } catch (error) {
+      submit.disabled = false;
+      status.textContent = error.message || t("Couldn't save the note.");
+    }
+  });
+
+  openModal({
+    title: t("Admin note"),
+    content,
+    actions: [
+      el("button", { class: "btn btn-ghost", type: "button", on: { click: closeModal } }, t("Cancel")),
+      submit,
+    ],
+  });
 }
 
 function sessionsText(playtime) {
