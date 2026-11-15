@@ -25,6 +25,9 @@ export default {
   "Sign out": "Logout",
 
   /* Signup QR panel */
+  "Signup": "Pendaftaran",
+  "Share a single-use QR so players can create their own account.":
+    "Bagikan QR sekali pakai supaya pemain bisa membuat akunnya sendiri.",
   "Signup QR panel": "Panel QR Pendaftaran",
   "Checking status…": "Memeriksa status…",
   "Off by default · Single-use player invite":

@@ -166,6 +166,8 @@ export default {
   "Trial mode: progress won't be saved.": "Mode trial, progres tidak akan disimpan.",
   "Download cancelled.": "Download dibatalkan.",
   "Couldn't download that game.": "Gagal download game itu.",
+  "Couldn't send the request.": "Gagal mengirim permintaan.",
+  "Trial game file is unavailable.": "File game trial tidak tersedia.",
   "BIOS wasn't available. Some games may not boot without one.":
     "BIOS tidak tersedia. Beberapa game mungkin tidak bisa jalan tanpanya.",
   "The emulator hit a snag.": "Emulator mengalami masalah.",

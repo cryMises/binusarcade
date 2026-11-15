@@ -96,6 +96,8 @@ export default {
   "Everyone sees this note on the game page. Save an empty note to remove it.":
     "Semua orang melihat catatan ini di halaman game. Simpan kosong untuk menghapusnya.",
   "Save note": "Simpan catatan",
+  "Note": "Catatan",
+  "Cancel": "Batal",
   "Note saved.": "Catatan disimpan.",
   "Note removed.": "Catatan dihapus.",
   "Couldn't save the note.": "Gagal menyimpan catatan.",
