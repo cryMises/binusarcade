@@ -825,7 +825,10 @@ export function adminView() {
         "aria-label": t("Reply to the player"),
       });
 
+      let resolving = false;
       const act = async (action) => {
+        if (resolving) return;
+        resolving = true;
         try {
           await api.resolveReport(group.reports[0].id, action, commentInput.value.trim());
           reportGroups = reportGroups.filter((item) => item !== group);
@@ -833,6 +836,8 @@ export function adminView() {
           toast(action === "dismiss" ? t("Report dismissed.") : t("Report resolved."), { tone: "success" });
         } catch (error) {
           toast(error.message || t("Couldn't update the report."), { tone: "error" });
+        } finally {
+          resolving = false;
         }
       };
 
@@ -956,14 +961,18 @@ export function adminView() {
                 class: "btn btn-keycap-sm btn-ghost admin-request-delete",
                 type: "button",
                 on: {
-                  click: async () => {
+                  click: async (event) => {
                     if (!window.confirm(t("Delete this request and its votes?"))) return;
+                    const button = event.currentTarget;
+                    if (button.disabled) return;
+                    button.disabled = true;
                     try {
                       await api.deleteRequest(row.id);
                       requestRows = requestRows.filter((item) => item !== row);
                       renderRequests();
                       toast(t("Request deleted."), { tone: "success" });
                     } catch (error) {
+                      button.disabled = false;
                       toast(error.message || t("Couldn't delete the request."), { tone: "error" });
                     }
                   },

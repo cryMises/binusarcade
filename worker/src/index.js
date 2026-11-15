@@ -216,7 +216,12 @@ async function verifyAdminRequest(request, env) {
   if (!res.ok) {
     return { ok: false, status: 403, detail: "Admin verification failed." };
   }
-  const user = await res.json();
+  let user;
+  try {
+    user = await res.json();
+  } catch {
+    return { ok: false, status: 502, detail: "RomM returned an invalid admin payload." };
+  }
   if (user?.role !== "admin") {
     return { ok: false, status: 403, detail: "Admin role required." };
   }
@@ -744,7 +749,7 @@ export class SignupRelayDO {
         const type = String(body?.type || "").trim();
         const note = cleanText(body?.note || "", REPORT_NOTE_MAX);
 
-        if (!Number.isInteger(romId) || romId <= 0) {
+        if (!Number.isSafeInteger(romId) || romId <= 0) {
           return json({ detail: "Invalid game id." }, 422, request, this.env);
         }
         if (title === null || !title) {
@@ -989,7 +994,7 @@ export class SignupRelayDO {
         const body = await readJsonBody(request);
         const romId = Number(body?.rom_id);
         const text = cleanText(body?.text || "", GAME_NOTE_MAX);
-        if (!Number.isInteger(romId) || romId <= 0) {
+        if (!Number.isSafeInteger(romId) || romId <= 0) {
           return json({ detail: "Invalid game id." }, 422, request, this.env);
         }
         if (text === null) {
@@ -1136,6 +1141,10 @@ export class SignupRelayDO {
           if (!REQUEST_STATUSES.has(status)) {
             return json({ detail: "Invalid request status." }, 422, request, this.env);
           }
+          const [requestRow] = this.sql()
+            .exec("SELECT id FROM requests WHERE id = ?", Number(match[1]))
+            .toArray();
+          if (!requestRow) return json({ detail: "Request not found." }, 404, request, this.env);
           this.sql().exec("UPDATE requests SET status = ? WHERE id = ?", status, Number(match[1]));
           return json({ ok: true, request_id: Number(match[1]), status }, 200, request, this.env);
         }
@@ -1147,6 +1156,8 @@ export class SignupRelayDO {
           const auth = await this.verifyAdmin(request);
           if (!auth.ok) return json({ detail: auth.detail }, auth.status, request, this.env);
           const id = Number(match[1]);
+          const [requestRow] = this.sql().exec("SELECT id FROM requests WHERE id = ?", id).toArray();
+          if (!requestRow) return json({ detail: "Request not found." }, 404, request, this.env);
           this.sql().exec("DELETE FROM request_votes WHERE request_id = ?", id);
           this.sql().exec("DELETE FROM requests WHERE id = ?", id);
           return json({ ok: true, request_id: id }, 200, request, this.env);

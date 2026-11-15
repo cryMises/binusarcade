@@ -471,7 +471,7 @@ export function trialView(ctx, initial = null) {
       }
       if (!rom?.id) {
         if (location.hash === "#/trial") history.replaceState(null, "", "#/");
-        if (!app.querySelector(".login-form")) window.location.hash = "#/";
+        if (!document.querySelector(".login-form")) window.location.hash = "#/";
         return;
       }
       const slugValues = [platformSlugOf(rom), rom?.platform_slug, rom?.platform_fs_slug, rom?.platform_display_name];

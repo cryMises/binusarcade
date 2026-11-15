@@ -717,12 +717,12 @@ async function relayRequest(
   if (auth) {
     headers.Authorization = `Bearer ${await accessToken()}`;
   } else if (optionalAuth && hasSession()) {
-    /* Public endpoints accept a token for attribution but must still work
-     * when the session is stale, so never let this failure block the call. */
-    try {
-      headers.Authorization = `Bearer ${await accessToken()}`;
-    } catch {
-      /* anonymous fallback */
+    /* Attribution only: use a still-valid token without triggering the
+     * refresh/expiry flow, so a stale session never signs the guest out. */
+    const session = getSession();
+    const token = session?.tokens?.access_token;
+    if (token && Date.now() < tokenExpiresAt(session) - 30_000) {
+      headers.Authorization = `Bearer ${token}`;
     }
   }
   const { signal: mergedSignal, done } = mergeSignals(timeout, signal);

@@ -36,6 +36,8 @@ export function el(tag, attrs = {}, ...children) {
 
   for (const [key, value] of Object.entries(attrs || {})) {
     if (value === undefined || value === null || value === false) continue;
+    /* Inline event-handler attributes are never accepted from data. */
+    if (key !== "on" && /^on/i.test(key)) continue;
     if (key === "class") node.className = value;
     else if (key === "dataset" && value && typeof value === "object") {
       for (const [dataKey, dataValue] of Object.entries(value)) {
@@ -112,15 +114,13 @@ export function link(href, attrs = {}, ...children) {
   const raw = String(href || "").trim();
   const safe = /^(https?:\/\/|#|\/(?!\/)|\.\.?\/)/i.test(raw) ? raw : "#";
   const isExternal = /^https?:/i.test(safe);
-  return el(
-    "a",
-    {
-      href: safe,
-      ...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {}),
-      ...attrs,
-    },
-    ...children,
-  );
+  const merged = { href: safe, ...attrs };
+  if (isExternal) {
+    /* Never let a caller drop the opener protections on an external link. */
+    merged.target = "_blank";
+    merged.rel = "noopener noreferrer";
+  }
+  return el("a", merged, ...children);
 }
 
 const ICONS = [];

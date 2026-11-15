@@ -681,6 +681,12 @@ async function checkCommunityDO() {
     await call(`/requests/${createdRow?.id}/vote`, { method: "POST", ip: "20.0.0.12" });
     const deleteNoAuth = await call(`/requests/${createdRow?.id}`, { method: "DELETE", ip: "20.0.0.10" });
     const deleteAdmin = await call(`/requests/${createdRow?.id}`, { method: "DELETE", token: "admin-jwt", ip: "20.0.0.10" });
+    const statusMissing = await call("/requests/999999/status", {
+      method: "POST",
+      body: { status: "added" },
+      token: "admin-jwt",
+    });
+    const deleteMissing = await call("/requests/999999", { method: "DELETE", token: "admin-jwt" });
     const afterDelete = await (await call("/requests", { ip: "20.0.0.11" })).json();
     const votesLeft = db.prepare("SELECT COUNT(*) AS n FROM request_votes WHERE request_id = ?").get(createdRow?.id);
 
@@ -759,6 +765,8 @@ async function checkCommunityDO() {
         nonAdminAll.status === 403 &&
         deleteNoAuth.status === 401 &&
         deleteAdmin.status === 200 &&
+        statusMissing.status === 404 &&
+        deleteMissing.status === 404 &&
         !afterDelete.requests.some((row) => row.id === createdRow?.id) &&
         Number(votesLeft?.n || 0) === 0,
     };

@@ -29,7 +29,12 @@ function matchRoute(path) {
     for (let i = 0; i < route.parts.length; i += 1) {
       const part = route.parts[i];
       if (part.startsWith(":")) {
-        params[part.slice(1)] = decodeURIComponent(segments[i]);
+        try {
+          params[part.slice(1)] = decodeURIComponent(segments[i]);
+        } catch {
+          ok = false;
+          break;
+        }
       } else if (part !== segments[i]) {
         ok = false;
         break;

@@ -493,6 +493,10 @@ try {
     assert(await page.isVisible("text=Back to Home"), "removed /play route falls back cleanly");
     assert((await page.locator("iframe").count()) === 0, "play route does not mount an emulator");
 
+    await page.goto(`${base}#/game/%E0%A4%A`);
+    await page.waitForSelector("text=Page not found", { timeout: 10_000 });
+    assert(await page.isVisible("text=Back to Home"), "malformed route param falls back cleanly");
+
     await context.close();
   }
 
