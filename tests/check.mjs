@@ -105,6 +105,7 @@ async function checkRelayDO() {
 
   try {
     let regEnabled = true;
+    let generalNote = "";
     const relay = new SignupRelayDO(
       { storage: { sql } },
       {
@@ -292,7 +293,12 @@ async function checkSettings() {
     const nonAdmin = await call("/settings", { method: "POST", body: { trialEnabled: true }, token: "user-jwt" });
     const adminSave = await call("/settings", {
       method: "POST",
-      body: { trialEnabled: true, trialGameId: 42, registrationEnabled: false },
+      body: {
+        trialEnabled: true,
+        trialGameId: 42,
+        registrationEnabled: false,
+        generalNote: "Use DeSmuME for NDS if a game stutters.",
+      },
       token: "admin-jwt",
     });
     const saved = await adminSave.json();
@@ -303,7 +309,8 @@ async function checkSettings() {
         defaultsRes.status === 200 &&
         defaults.trialGameId === null &&
         defaults.trialEnabled === false &&
-        defaults.registrationEnabled === true,
+        defaults.registrationEnabled === true &&
+        defaults.generalNote === "",
       postNeedsAuth: noAuth.status === 401 || noAuth.status === 403,
       postBlocksNonAdmin: nonAdmin.status === 403,
       adminCanSave:
@@ -312,7 +319,8 @@ async function checkSettings() {
         saved.trialGameId === 42 &&
         saved.registrationEnabled === false &&
         after.trialGameId === 42 &&
-        after.registrationEnabled === false,
+        after.registrationEnabled === false &&
+        after.generalNote === "Use DeSmuME for NDS if a game stutters.",
     };
   } finally {
     globalThis.fetch = origFetch;
@@ -503,12 +511,13 @@ async function checkCommunityDO() {
   };
 
   try {
+    let generalNote = "";
     const relay = new SignupRelayDO(
       { storage: { sql } },
       {
         ROMM_ORIGIN: "https://romm.test",
         ALLOWED_ORIGINS: "https://crymises.github.io",
-        SETTINGS: { async get() { return ""; } },
+        SETTINGS: { async get() { return JSON.stringify({ generalNote }); } },
       },
     );
 
@@ -539,6 +548,9 @@ async function checkCommunityDO() {
     });
     const noteCleared = await call("/notes", { method: "POST", body: { rom_id: 42, text: "  " }, token: "admin-jwt" });
     const noteAfterClear = await call("/notes/42");
+    generalNote = "Use DeSmuME for NDS if a game stutters.";
+    const generalOnly = await (await call("/notes/42")).json();
+    generalNote = "";
 
     /* Reports */
     const reportGuest = await call("/reports", {
@@ -661,7 +673,9 @@ async function checkCommunityDO() {
         notePublic.text === "PC only · stylus" &&
         noteTooLong.status === 422 &&
         noteCleared.status === 200 &&
-        noteAfterClear.status === 404,
+        noteAfterClear.status === 404 &&
+        generalOnly.text === null &&
+        generalOnly.generalText === "Use DeSmuME for NDS if a game stutters.",
       reportValidation:
         reportGuest.status === 201 &&
         reportDuplicate.status === 429 &&

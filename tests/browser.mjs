@@ -1146,7 +1146,11 @@ try {
       const path = new URL(request.url()).pathname;
       if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
       if (path === "/notes/1" && request.method() === "GET") {
-        return send(route, { rom_id: 1, text: "PC only, stylus game." });
+        return send(route, {
+          rom_id: 1,
+          text: "PC only, stylus game.",
+          generalText: "Use DeSmuME on phones if games stutter.",
+        });
       }
       if (path === "/reports" && request.method() === "POST") return send(route, { ok: true }, 201);
       return send(route, { detail: "No note for this game." }, 404);
@@ -1154,8 +1158,9 @@ try {
 
     await page.goto(`${base}#/game/1`);
     await page.waitForSelector(".detail-title", { timeout: 10_000 });
-    await page.waitForSelector(".game-note", { timeout: 10_000 });
+    await page.waitForSelector(".game-note:not(.game-note-general)", { timeout: 10_000 });
     assert(await page.isVisible("text=PC only, stylus game."), "detail renders the public admin note");
+    assert(await page.isVisible("text=Use DeSmuME on phones if games stutter."), "detail renders the general note");
     assert(await page.isVisible("[data-report-open]"), "detail shows the report button to signed-in visitors");
     assert((await page.locator("[data-note-edit]").count()) === 0, "non-admin has no note editor");
     await page.click("[data-report-open]");
@@ -1193,7 +1198,7 @@ try {
     await page.waitForSelector(".modal textarea", { timeout: 10_000 });
     await page.fill(".modal textarea", "Switch to DeSmuME on phones.");
     await page.click(".modal .btn-primary");
-    await page.waitForSelector(".game-note", { timeout: 10_000 });
+    await page.waitForSelector(".game-note:not(.game-note-general)", { timeout: 10_000 });
     assert(await page.isVisible("text=Switch to DeSmuME on phones."), "admin note saves and renders publicly");
     await page.screenshot({ path: join(screenshots, "detail-note-390.png"), fullPage: true });
     await context.close();

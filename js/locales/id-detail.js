@@ -105,4 +105,5 @@ export default {
   "No sound": "Tidak ada suara",
   "Save problem": "Masalah save",
   "Other": "Lainnya",
+  "General note": "Catatan umum",
 };

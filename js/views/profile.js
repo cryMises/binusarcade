@@ -324,11 +324,19 @@ export function adminView() {
   });
   const searchBtn = el("button", { class: "btn btn-keycap-sm btn-primary", type: "button" }, icon("search", 16), t("Search"));
   const results = el("div", { class: "admin-trial-results" });
+  const generalNoteInput = el("textarea", {
+    class: "input",
+    rows: "3",
+    maxlength: "500",
+    id: "general-note",
+    placeholder: t("Use DeSmuME for NDS if a game stutters."),
+    "aria-label": t("General note"),
+  });
   const trialToggle = el("input", { type: "checkbox", class: "switch-input", id: "trial-enabled" });
   const regToggle = el("input", { type: "checkbox", class: "switch-input", id: "registration-enabled", checked: true });
   const saveBtn = el("button", { class: "btn btn-keycap btn-mint", type: "button" }, icon("save", 18), t("Save settings"));
   let selectedGame = null;
-  let settings = { trialGameId: null, trialEnabled: false, registrationEnabled: true };
+  let settings = { trialGameId: null, trialEnabled: false, registrationEnabled: true, generalNote: "" };
   let disposed = false;
 
   /* Signup QR (relay) */
@@ -497,6 +505,7 @@ export function adminView() {
     if (disposed) return;
     trialToggle.checked = Boolean(settings.trialEnabled);
     regToggle.checked = settings.registrationEnabled !== false;
+    generalNoteInput.value = settings.generalNote || "";
     status.replaceChildren(el("p", { class: "note" }, t("Settings loaded.")));
     if (settings.trialGameId) {
       try {
@@ -580,6 +589,7 @@ export function adminView() {
         trialGameId: selectedGame?.id ?? settings.trialGameId ?? null,
         trialEnabled: trialToggle.checked,
         registrationEnabled: regToggle.checked,
+        generalNote: generalNoteInput.value.trim(),
       };
       if (next.trialEnabled && !next.trialGameId) {
         toast(t("Pick a trial game before enabling trial."), { tone: "warn" });
@@ -862,6 +872,20 @@ export function adminView() {
           regToggle,
           el("span", {}, t("Allow self-registration")),
         ),
+      ),
+      el("h2", { class: "section-subhead" }, t("General note for all games")),
+      el(
+        "p",
+        { class: "note" },
+        t(
+          "Shown on every game page. Use it for core advice, e.g. try DeSmuME for NDS if a game stutters.",
+        ),
+      ),
+      el(
+        "label",
+        { class: "field", for: "general-note" },
+        el("span", { class: "field-label" }, t("General note")),
+        generalNoteInput,
       ),
       el("h2", { class: "section-subhead" }, t("Trial game")),
       currentGame,

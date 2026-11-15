@@ -140,4 +140,9 @@ export default {
   "Request deleted.": "Request dihapus.",
   "Couldn't delete the request.": "Gagal menghapus request.",
   "Guest": "Tamu",
+  "General note for all games": "Catatan umum untuk semua game",
+  "Shown on every game page. Use it for core advice, e.g. try DeSmuME for NDS if a game stutters.":
+    "Tampil di semua halaman game. Pakai untuk saran core, misalnya coba DeSmuME untuk NDS kalau game tersendat.",
+  "Use DeSmuME for NDS if a game stutters.":
+    "Pakai DeSmuME untuk NDS kalau game tersendat.",
 };

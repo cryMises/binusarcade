@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = {
   trialGameId: null,
   trialEnabled: false,
   registrationEnabled: true,
+  generalNote: "",
 };
 
 /* Community features (broken-game reports, per-game notes, game requests). */
@@ -31,6 +32,7 @@ const REPORT_TYPES = new Set([
 const REPORT_NOTE_MAX = 200;
 const ROM_TITLE_MAX = 200;
 const GAME_NOTE_MAX = 200;
+const GENERAL_NOTE_MAX = 500;
 const REQUEST_TITLE_MAX = 100;
 const REQUEST_NOTE_MAX = 200;
 const REQUEST_STATUSES = new Set(["open", "planned", "added", "denied"]);
@@ -146,6 +148,10 @@ function normalizeSettings(input = {}) {
       typeof input?.registrationEnabled === "boolean"
         ? input.registrationEnabled
         : DEFAULT_SETTINGS.registrationEnabled,
+    generalNote:
+      typeof input?.generalNote === "string"
+        ? input.generalNote.trim().slice(0, GENERAL_NOTE_MAX)
+        : "",
   };
 }
 
@@ -826,11 +832,23 @@ export class SignupRelayDO {
       {
         const match = path.match(/^\/notes\/(\d+)$/);
         if (match && request.method === "GET") {
+          const settings = await readSettings(this.env);
+          const generalText = settings.generalNote || "";
           const [row] = this.sql()
             .exec("SELECT text, updated_at FROM game_notes WHERE rom_id = ?", Number(match[1]))
             .toArray();
-          if (!row) return json({ detail: "No note for this game." }, 404, request, this.env);
-          return json({ rom_id: Number(match[1]), text: row.text, updated_at: Number(row.updated_at) }, 200, request, this.env);
+          if (!row) {
+            if (generalText) {
+              return json({ rom_id: Number(match[1]), text: null, generalText }, 200, request, this.env);
+            }
+            return json({ detail: "No note for this game." }, 404, request, this.env);
+          }
+          return json(
+            { rom_id: Number(match[1]), text: row.text, generalText, updated_at: Number(row.updated_at) },
+            200,
+            request,
+            this.env,
+          );
         }
       }
 

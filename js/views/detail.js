@@ -241,12 +241,28 @@ async function loadCommunity(container, rom) {
   if (!hasSignupRelay()) return;
 
   const admin = isRoleAdmin(getSession());
-  const stored = await api.gameNote(rom.id).catch(() => null);
+  const payload = await api.gameNote(rom.id).catch(() => null);
   if (!container.isConnected) return;
 
+  const generalText = payload?.generalText || "";
   const callout = el("aside", { class: "game-note", role: "note" });
+  const generalCallout = el("aside", { class: "game-note game-note-general", role: "note" });
   const actions = el("div", { class: "detail-community-actions" });
-  let note = stored;
+  let note = payload?.text ? { text: payload.text } : null;
+
+  if (generalText) {
+    generalCallout.append(
+      el("span", { class: "game-note-icon" }, icon("alert", 17, t("General note"))),
+      el(
+        "div",
+        { class: "game-note-copy" },
+        el("strong", {}, t("General note")),
+        el("p", {}, generalText),
+      ),
+    );
+  } else {
+    generalCallout.hidden = true;
+  }
 
   const renderNote = () => {
     callout.replaceChildren();
@@ -302,7 +318,7 @@ async function loadCommunity(container, rom) {
     editButton,
   );
 
-  container.append(callout, actions);
+  container.append(generalCallout, callout, actions);
 }
 
 function openReportForm(rom) {
