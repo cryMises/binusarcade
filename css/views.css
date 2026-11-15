@@ -1138,6 +1138,10 @@
   margin-top: 18px;
 }
 
+.not-found-card .stub-actions .btn {
+  min-width: 190px;
+}
+
 /* ---------- Empty / error states ---------- */
 
 .empty-state {

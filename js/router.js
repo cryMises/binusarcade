@@ -74,7 +74,7 @@ export function setDocumentTitle(title) {
   document.title = title ? `${title} · Binus Arcade` : "Binus Arcade";
 }
 
-function fallback(error) {
+export function notFoundView(error) {
   const div = document.createElement("div");
   div.className = "view wrap not-found-view";
 
@@ -139,7 +139,7 @@ async function run() {
 
   let node = null;
   if (!match) {
-    node = fallback();
+    node = notFoundView();
     setDocumentTitle(t("Page not found"));
   } else {
     try {
@@ -148,7 +148,7 @@ async function run() {
       node = result?.el || result?.node || result;
     } catch (error) {
       console.error("Route failed", error);
-      node = fallback(error);
+      node = notFoundView(error);
       setDocumentTitle(t("Couldn't load page"));
     }
   }

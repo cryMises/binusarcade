@@ -9,7 +9,7 @@ import {
 } from "./components.js";
 import { APP_VERSION, FEATURES, ROMM_ORIGIN } from "./config.js";
 import { initI18n, locale, setLocale, t } from "./i18n.js";
-import { addRoute, readHash, rerender, startRouter } from "./router.js";
+import { addRoute, notFoundView, readHash, rerender, startRouter } from "./router.js";
 import { applyTheme, currentTheme, initTheme } from "./theme.js";
 import { adminView, profileView, scoresView } from "./views/profile.js";
 import { detailView } from "./views/detail.js";
@@ -33,6 +33,21 @@ const NAV_ITEMS = [
   { key: "shelf", href: "#/shelf", label: "Shelf", icon: "book" },
   { key: "me", href: "#/me", label: "Me", icon: "user" },
 ];
+
+/* Routes that exist for everyone. Signed-out visitors get the sign-in screen
+ * on these; any other hash is a dead link and gets the not-found page. */
+const SIGNED_OUT_PATHS = new Set([
+  "/",
+  "/library",
+  "/shelf",
+  "/scores",
+  "/request",
+  "/me",
+  "/admin",
+  "/signup",
+  "/register",
+  "/trial",
+]);
 
 /* ------------------------------------------------------------------ */
 /* Boot                                                               */
@@ -114,6 +129,16 @@ async function renderSignedOut() {
 
   registerCleanup?.();
   registerCleanup = null;
+
+  /* Signed out, real routes still lead to sign-in. Anything else is a dead
+   * link, so show the not-found page instead of a login form that pretends
+   * the page exists. */
+  if (!SIGNED_OUT_PATHS.has(path) && !/^\/(platform|game)\/[^/]+\/?$/.test(path)) {
+    app.replaceChildren(notFoundView());
+    document.title = `${t("Page not found")} · Binus Arcade`;
+    return;
+  }
+
   /* Try to apply public settings quickly without blocking sign-in. */
   const quick = Promise.race([
     loadPublicState(),

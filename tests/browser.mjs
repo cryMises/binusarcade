@@ -508,6 +508,15 @@ try {
     assert(await page.isVisible("text=Create account"), "login links to invite registration");
     assert(await page.isChecked("#login-remember"), "stay signed in is on by default");
     await page.screenshot({ path: join(screenshots, "login-390.png"), fullPage: true });
+
+    await page.goto(`${base}#/nope-404`);
+    await page.waitForSelector("text=Not on this shelf", { timeout: 10_000 });
+    assert(await page.isVisible("text=Page not found"), "signed-out dead link shows the not-found page");
+    assert(await page.isVisible("text=Open the library"), "not-found page offers the library");
+    await page.screenshot({ path: join(screenshots, "not-found-390.png"), fullPage: true });
+
+    await page.goto(base);
+    await page.waitForSelector("#login-username");
     await page.fill("#login-username", "pongo");
     await page.fill("#login-password", "supersecret");
     await page.click('button[type="submit"]');
