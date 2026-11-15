@@ -42,6 +42,12 @@ const REPORT_TYPE_LABELS = {
   other: "Other",
 };
 
+const REPORT_STATUS_LABELS = {
+  open: "Ticket open",
+  resolved: "Fixed",
+  dismissed: "Closed",
+};
+
 const REQUEST_STATUS_LABELS = {
   open: "Open request",
   planned: "Planned",
@@ -190,6 +196,41 @@ export function profileView() {
     el("span", { class: "chev" }, "→"),
   );
 
+  const reportBody = el("div", { class: "report-list" }, loadingLine(t("Loading your reports…")));
+  const reportSection = el(
+    "section",
+    { class: "section" },
+    el("div", { class: "section-head" }, el("h2", { class: "marker marker-sm" }, t("My reports"))),
+    el(
+      "p",
+      { class: "note" },
+      t("Tickets you filed while signed in. The admin reply shows here; reopen a fixed ticket if the game still breaks."),
+    ),
+    reportBody,
+  );
+
+  async function loadMyReports() {
+    if (!hasSignupRelay()) {
+      reportSection.remove();
+      return;
+    }
+    try {
+      const payload = await api.myReports();
+      const rows = Array.isArray(payload?.reports) ? payload.reports : [];
+      clear(reportBody);
+      if (!rows.length) {
+        reportBody.append(
+          el("p", { class: "note report-empty" }, t("No reports yet. If a game breaks, use Report a problem on its page.")),
+        );
+        return;
+      }
+      rows.forEach((row) => reportBody.append(reportTicket(row)));
+    } catch {
+      clear(reportBody);
+      reportBody.append(el("p", { class: "note report-empty" }, t("Couldn't load your reports right now.")));
+    }
+  }
+
   root.append(
     el("div", { class: "eyebrow" }, t("Account")),
     el(
@@ -263,10 +304,67 @@ export function profileView() {
         ),
       ),
     ),
+    reportSection,
     siteFooter(),
   );
 
+  void loadMyReports();
   return root;
+}
+
+function reportTicket(row) {
+  let current = row;
+  const status = el(
+    "span",
+    { class: `chip-cat report-status status-${current.status}` },
+    t(REPORT_STATUS_LABELS[current.status] || "Ticket open"),
+  );
+
+  const reopen = el(
+    "button",
+    { class: "btn btn-keycap-sm btn-ghost report-reopen", type: "button" },
+    t("Reopen ticket"),
+  );
+  reopen.addEventListener("click", async () => {
+    reopen.disabled = true;
+    try {
+      await api.reopenReport(current.id);
+      current = { ...current, status: "open" };
+      status.textContent = t("Ticket open");
+      status.className = "chip-cat report-status status-open";
+      reopen.remove();
+      toast(t("Ticket reopened. The admin sees it again."), { tone: "success" });
+    } catch (error) {
+      reopen.disabled = false;
+      toast(error.message || t("Couldn't reopen the ticket."), { tone: "error" });
+    }
+  });
+
+  return el(
+    "article",
+    { class: `report-ticket status-${current.status}` },
+    el(
+      "div",
+      { class: "report-ticket-head" },
+      el("strong", {}, current.rom_title || t("Game {id}", { id: current.rom_id })),
+      status,
+    ),
+    el(
+      "p",
+      { class: "report-meta" },
+      [t(REPORT_TYPE_LABELS[current.type] || "Other"), timeAgo(current.created_at)].filter(Boolean).join(" · "),
+    ),
+    current.note ? el("p", { class: "report-ticket-note" }, current.note) : null,
+    current.admin_note
+      ? el(
+          "div",
+          { class: "report-reply" },
+          el("span", { class: "report-reply-label" }, t("Admin reply")),
+          el("p", {}, current.admin_note),
+        )
+      : null,
+    current.status === "open" ? null : el("div", { class: "report-ticket-actions" }, reopen),
+  );
 }
 
 export function scoresView() {
@@ -694,9 +792,17 @@ export function adminView() {
         );
       });
 
+      const commentInput = el("textarea", {
+        class: "input admin-report-comment",
+        rows: "2",
+        maxlength: "500",
+        placeholder: t("Short fix or explanation for the player (optional)"),
+        "aria-label": t("Reply to the player"),
+      });
+
       const act = async (action) => {
         try {
-          await api.resolveReport(group.reports[0].id, action);
+          await api.resolveReport(group.reports[0].id, action, commentInput.value.trim());
           reportGroups = reportGroups.filter((item) => item !== group);
           renderReports();
           toast(action === "dismiss" ? t("Report dismissed.") : t("Report resolved."), { tone: "success" });
@@ -729,6 +835,7 @@ export function adminView() {
           el(
             "div",
             { class: "admin-report-actions" },
+            commentInput,
             el(
               "button",
               { class: "btn btn-keycap-sm btn-mint", type: "button", on: { click: () => act("resolve") } },

@@ -594,10 +594,21 @@ async function checkCommunityDO() {
 
     const resolveNoAuth = await call(`/reports/${firstGroup?.reports?.[0]?.id}/resolve`, { method: "POST" });
     const resolveNoGroup = firstGroup
-      ? await call(`/reports/${firstGroup.reports[0].id}/resolve`, { method: "POST", token: "admin-jwt" })
+      ? await call(`/reports/${firstGroup.reports[0].id}/resolve`, {
+          method: "POST",
+          body: { comment: "Patched the core." },
+          token: "admin-jwt",
+        })
       : null;
     const resolvedGroup = await (await call(`/reports?status=resolved`, { token: "admin-jwt" })).json();
     const openAfterResolve = await (await call("/reports?status=open", { token: "admin-jwt" })).json();
+
+    const mineGuest = await call("/reports?mine=1");
+    const mineUser = await (await call("/reports?mine=1", { token: "user-jwt" })).json();
+    const mineTicket = mineUser.reports?.[0];
+    const reopenGuest = await call(`/reports/${mineTicket?.id}/reopen`, { method: "POST" });
+    const reopenOwner = await call(`/reports/${mineTicket?.id}/reopen`, { method: "POST", token: "user-jwt" });
+    const mineAfterReopen = await (await call("/reports?mine=1", { token: "user-jwt" })).json();
 
     /* Fill the daily report cap for 10.0.0.1, then expect 429. */
     let dailyReportLimit = false;
@@ -710,6 +721,15 @@ async function checkCommunityDO() {
         resolvedGroup.groups?.length === 1 &&
         resolvedGroup.groups[0].count === 1 &&
         openAfterResolve.groups?.length === 1,
+      reportTickets:
+        resolvedGroup.groups?.[0]?.reports?.[0]?.admin_note === "Patched the core." &&
+        mineGuest.status === 401 &&
+        mineUser.reports?.length === 1 &&
+        mineTicket?.status === "resolved" &&
+        mineTicket?.admin_note === "Patched the core." &&
+        reopenGuest.status === 403 &&
+        reopenOwner.status === 200 &&
+        mineAfterReopen.reports?.[0]?.status === "open",
       reportDailyCap: dailyReportLimit,
       requestAndVotes:
         requestCreated.status === 201 &&
@@ -926,6 +946,7 @@ const checks = [
   ["Community reports validate input and throttle repeats", communityChecks.reportValidation],
   ["Community reports group by game without leaking identity", communityChecks.reportsGrouped],
   ["Community report resolve clears the whole group", communityChecks.resolveClearsGroup],
+  ["Community report tickets show the admin reply and can reopen", communityChecks.reportTickets],
   ["Community report daily cap", communityChecks.reportDailyCap],
   ["Community requests post and toggle votes", communityChecks.requestAndVotes],
   ["Community request daily cap", communityChecks.requestDailyCap],

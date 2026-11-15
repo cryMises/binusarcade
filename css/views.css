@@ -3537,3 +3537,95 @@ textarea.input {
 .admin-note-panel[open] > summary {
   margin-bottom: 4px;
 }
+
+/* ---------- Report tickets: admin reply + reopen in Me ---------- */
+
+.report-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.report-empty {
+  margin: 0;
+}
+
+.report-ticket {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.report-ticket.status-resolved {
+  border-left: 3px solid var(--primary);
+}
+
+.report-ticket.status-dismissed {
+  opacity: 0.7;
+}
+
+.report-ticket-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.report-ticket-head strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-ticket-head .chip-cat {
+  margin-left: auto;
+}
+
+.report-meta {
+  margin: 0;
+  color: var(--on-surface-muted);
+  font-size: 0.78rem;
+}
+
+.report-ticket-note {
+  margin: 0;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.report-reply {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--chip-bg);
+}
+
+.report-reply-label {
+  color: var(--on-surface-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-reply p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-ticket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.admin-report-comment {
+  flex: 1 0 100%;
+  min-height: 56px;
+}

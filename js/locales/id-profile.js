@@ -149,4 +149,23 @@ export default {
   "Shown on that console's game pages. Leave a console empty to hide its note.":
     "Tampil di halaman game konsol itu. Kosongkan konsol untuk menyembunyikan catatannya.",
   "Leave empty for no note": "Kosongkan kalau tidak ada catatan",
+
+  /* Report tickets in Me */
+  "My reports": "Laporan saya",
+  "Tickets you filed while signed in. The admin reply shows here; reopen a fixed ticket if the game still breaks.":
+    "Tiket yang kamu kirim saat login. Balasan admin muncul di sini; buka lagi tiket yang sudah diperbaiki kalau game-nya masih rusak.",
+  "Loading your reports…": "Memuat laporanmu…",
+  "No reports yet. If a game breaks, use Report a problem on its page.":
+    "Belum ada laporan. Kalau ada game rusak, pakai Laporkan masalah di halaman game-nya.",
+  "Couldn't load your reports right now.": "Gagal memuat laporanmu sekarang.",
+  "Admin reply": "Balasan admin",
+  "Reopen ticket": "Buka lagi tiket",
+  "Ticket reopened. The admin sees it again.":
+    "Tiket dibuka lagi. Admin akan melihatnya kembali.",
+  "Couldn't reopen the ticket.": "Gagal membuka lagi tiket.",
+  "Ticket open": "Tiket terbuka",
+  "Fixed": "Diperbaiki",
+  "Short fix or explanation for the player (optional)":
+    "Perbaikan atau penjelasan singkat untuk pemain (opsional)",
+  "Reply to the player": "Balasan untuk pemain",
 };

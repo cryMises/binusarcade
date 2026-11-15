@@ -1207,6 +1207,32 @@ try {
         note = JSON.parse(request.postData() || "{}").text || "";
         return send(route, { ok: true, rom_id: 1, text: note || null });
       }
+      if (path === "/reports" && request.method() === "GET") {
+        return send(route, {
+          status: "open",
+          openGroups: 1,
+          groups: [
+            {
+              rom_id: 1,
+              rom_title: "Mario Kart: Super Circuit",
+              platform_slug: "gba",
+              count: 1,
+              types: { black_screen: 1 },
+              reports: [
+                {
+                  id: 9,
+                  type: "black_screen",
+                  note: "Audio only.",
+                  reporter: "player",
+                  status: "open",
+                  admin_note: "",
+                  created_at: Date.now() - 3_600_000,
+                },
+              ],
+            },
+          ],
+        });
+      }
       return send(route, { detail: "Not found" }, 404);
     });
 
@@ -1221,6 +1247,57 @@ try {
     await page.waitForSelector(".game-note:not(.game-note-general)", { timeout: 10_000 });
     assert(await page.isVisible("text=Switch to DeSmuME on phones."), "admin note saves and renders publicly");
     await page.screenshot({ path: join(screenshots, "detail-note-390.png"), fullPage: true });
+
+    await page.goto(`${base}#/admin`);
+    await page.waitForSelector(".admin-report-group", { timeout: 10_000 });
+    await page.click(".admin-report-group > summary");
+    await page.waitForSelector(".admin-report-comment", { state: "visible", timeout: 10_000 });
+    assert(await page.isVisible(".admin-report-comment"), "admin can write a reply on a report");
+    await context.close();
+  }
+
+  /* Me page: report ticket with the admin reply, reopened by the player */
+  {
+    const { context, page } = await newPage(browser, { relayUrl: "https://relay.example" });
+    let reopened = false;
+    await page.route("https://relay.example/**", async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const path = url.pathname;
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (path === "/reports" && url.searchParams.get("mine") === "1") {
+        return send(route, {
+          reports: [
+            {
+              id: 7,
+              rom_id: 1,
+              rom_title: "Mario Kart: Super Circuit",
+              platform_slug: "gba",
+              type: "black_screen",
+              note: "Audio only.",
+              status: reopened ? "open" : "resolved",
+              admin_note: "Switched to a lighter core.",
+              created_at: Date.now() - 86_400_000,
+              resolved_at: Date.now() - 3_600_000,
+            },
+          ],
+        });
+      }
+      if (path === "/reports/7/reopen") {
+        reopened = true;
+        return send(route, { ok: true, report_id: 7, status: "open" });
+      }
+      return send(route, { detail: "Not found" }, 404);
+    });
+
+    await page.goto(`${base}#/me`);
+    await page.waitForSelector(".report-ticket", { timeout: 10_000 });
+    assert(await page.isVisible("text=Admin reply"), "Me page shows the admin reply label");
+    assert(await page.isVisible("text=Switched to a lighter core."), "Me page shows the admin fix");
+    await page.click(".report-reopen");
+    await page.waitForSelector("text=Ticket reopened. The admin sees it again.", { timeout: 10_000 });
+    assert((await page.locator(".report-reopen").count()) === 0, "reopened ticket hides the reopen button");
+    await page.screenshot({ path: join(screenshots, "me-reports-390.png"), fullPage: true });
     await context.close();
   }
 

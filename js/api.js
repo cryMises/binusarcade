@@ -994,12 +994,21 @@ export const api = {
     return relayRequest(`/reports?status=${encodeURIComponent(status)}`, { auth: true, signal });
   },
 
-  resolveReport(id, action = "resolve", { signal } = {}) {
+  resolveReport(id, action = "resolve", comment = "", { signal } = {}) {
     return relayRequest(`/reports/${encodeURIComponent(id)}/${action === "dismiss" ? "dismiss" : "resolve"}`, {
       method: "POST",
+      body: { comment: String(comment || "") },
       auth: true,
       signal,
     });
+  },
+
+  myReports({ signal } = {}) {
+    return relayRequest("/reports?mine=1", { auth: true, signal });
+  },
+
+  reopenReport(id, { signal } = {}) {
+    return relayRequest(`/reports/${encodeURIComponent(id)}/reopen`, { method: "POST", auth: true, signal });
   },
 
   requests({ all = false, signal } = {}) {

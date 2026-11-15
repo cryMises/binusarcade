@@ -31,6 +31,7 @@ const REPORT_TYPES = new Set([
   "other",
 ]);
 const REPORT_NOTE_MAX = 200;
+const REPORT_REPLY_MAX = 500;
 const ROM_TITLE_MAX = 200;
 const GAME_NOTE_MAX = 200;
 const GENERAL_NOTE_MAX = 500;
@@ -329,9 +330,13 @@ export class SignupRelayDO {
         type TEXT NOT NULL,
         note TEXT,
         reporter TEXT NOT NULL DEFAULT 'guest',
+        reporter_key TEXT,
         ip_hash TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        status TEXT NOT NULL DEFAULT 'open'
+        status TEXT NOT NULL DEFAULT 'open',
+        admin_note TEXT,
+        resolved_at INTEGER,
+        updated_at INTEGER
       );
       CREATE INDEX IF NOT EXISTS reports_status ON reports (status, created_at);
       CREATE INDEX IF NOT EXISTS reports_ip ON reports (ip_hash, created_at);
@@ -365,6 +370,19 @@ export class SignupRelayDO {
       );
       CREATE INDEX IF NOT EXISTS vote_events_ip ON vote_events (ip_hash, created_at);
     `);
+    /* Existing deployments predate the ticket columns; add them in place. */
+    for (const statement of [
+      "ALTER TABLE reports ADD COLUMN reporter_key TEXT",
+      "ALTER TABLE reports ADD COLUMN admin_note TEXT",
+      "ALTER TABLE reports ADD COLUMN resolved_at INTEGER",
+      "ALTER TABLE reports ADD COLUMN updated_at INTEGER",
+    ]) {
+      try {
+        this.sql().exec(statement);
+      } catch {
+        /* column already exists */
+      }
+    }
     this.initialized = true;
   }
 
@@ -762,18 +780,54 @@ export class SignupRelayDO {
         }
 
         this.sql().exec(
-          `INSERT INTO reports (rom_id, rom_title, platform_slug, type, note, reporter, ip_hash, created_at, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')`,
+          `INSERT INTO reports (rom_id, rom_title, platform_slug, type, note, reporter, reporter_key, ip_hash, created_at, updated_at, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')`,
           romId,
           title,
           platform || null,
           type,
           note || null,
           viewerName(viewer),
+          viewer.voterKey,
           viewer.ipHash,
+          now,
           now,
         );
         return json({ ok: true }, 201, request, this.env);
+      }
+
+      /* A signed-in player's own tickets, including the admin reply. */
+      if (path === "/reports" && request.method === "GET" && url.searchParams.get("mine") === "1") {
+        const viewer = await resolveViewer(request, this.env);
+        if (!viewer.user) {
+          return json({ detail: "Sign in to see your reports." }, 401, request, this.env);
+        }
+        const rows = this.sql()
+          .exec(
+            "SELECT * FROM reports WHERE reporter_key = ? ORDER BY created_at DESC LIMIT ?",
+            viewer.voterKey,
+            LIST_LIMIT,
+          )
+          .toArray();
+        return json(
+          {
+            reports: rows.map((row) => ({
+              id: Number(row.id),
+              rom_id: Number(row.rom_id),
+              rom_title: row.rom_title,
+              platform_slug: row.platform_slug || null,
+              type: row.type,
+              note: row.note || "",
+              status: row.status,
+              admin_note: row.admin_note || "",
+              created_at: Number(row.created_at),
+              resolved_at: row.resolved_at ? Number(row.resolved_at) : null,
+            })),
+          },
+          200,
+          request,
+          this.env,
+        );
       }
 
       if (path === "/reports" && request.method === "GET") {
@@ -814,6 +868,7 @@ export class SignupRelayDO {
             note: row.note || "",
             reporter: row.reporter || "guest",
             status: row.status,
+            admin_note: row.admin_note || "",
             created_at: Number(row.created_at),
           });
         }
@@ -837,9 +892,46 @@ export class SignupRelayDO {
             .exec("SELECT id, rom_id FROM reports WHERE id = ?", Number(match[1]))
             .toArray();
           if (!report) return json({ detail: "Report not found." }, 404, request, this.env);
+          const body = await readJsonBody(request);
+          const comment = cleanText(body?.comment || "", REPORT_REPLY_MAX);
+          if (comment === null) {
+            return json({ detail: `Reply must be ${REPORT_REPLY_MAX} characters or fewer.` }, 422, request, this.env);
+          }
           const status = match[2] === "resolve" ? "resolved" : "dismissed";
-          this.sql().exec("UPDATE reports SET status = ? WHERE rom_id = ? AND status = 'open'", status, report.rom_id);
-          return json({ ok: true, rom_id: Number(report.rom_id), status }, 200, request, this.env);
+          const now = Date.now();
+          this.sql().exec(
+            `UPDATE reports SET status = ?, admin_note = ?, resolved_at = ?, updated_at = ?
+             WHERE rom_id = ? AND status = 'open'`,
+            status,
+            comment || null,
+            now,
+            now,
+            report.rom_id,
+          );
+          return json({ ok: true, rom_id: Number(report.rom_id), status, admin_note: comment }, 200, request, this.env);
+        }
+      }
+
+      /* The reporting player can reopen a closed ticket from the Me page. */
+      {
+        const match = path.match(/^\/reports\/(\d+)\/reopen$/);
+        if (match && request.method === "POST") {
+          const viewer = await resolveViewer(request, this.env);
+          const [report] = this.sql()
+            .exec("SELECT id, rom_id, reporter_key, status FROM reports WHERE id = ?", Number(match[1]))
+            .toArray();
+          if (!report) return json({ detail: "Report not found." }, 404, request, this.env);
+          const owner = Boolean(viewer.user) && report.reporter_key === viewer.voterKey;
+          if (!owner && !(await this.verifyAdmin(request)).ok) {
+            return json({ detail: "Only the reporter can reopen this ticket." }, 403, request, this.env);
+          }
+          const now = Date.now();
+          this.sql().exec(
+            "UPDATE reports SET status = 'open', resolved_at = NULL, updated_at = ? WHERE id = ?",
+            now,
+            Number(match[1]),
+          );
+          return json({ ok: true, report_id: Number(match[1]), status: "open" }, 200, request, this.env);
         }
       }
 
