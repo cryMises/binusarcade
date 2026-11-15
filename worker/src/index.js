@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   trialEnabled: false,
   registrationEnabled: true,
   generalNote: "",
+  generalNotes: {},
 };
 
 /* Community features (broken-game reports, per-game notes, game requests). */
@@ -134,6 +135,22 @@ function extractCsrfCookie(headers) {
   return "";
 }
 
+function normalizeGeneralNotes(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out = {};
+  let count = 0;
+  for (const [key, text] of Object.entries(value)) {
+    if (count >= 40) break;
+    const slug = String(key || "").trim().toLowerCase();
+    if (!/^[a-z0-9-]{1,32}$/.test(slug) || typeof text !== "string") continue;
+    const cleaned = text.trim().slice(0, GENERAL_NOTE_MAX);
+    if (!cleaned) continue;
+    out[slug] = cleaned;
+    count += 1;
+  }
+  return out;
+}
+
 function normalizeSettings(input = {}) {
   const id = input?.trialGameId;
   let trialGameId = null;
@@ -152,6 +169,7 @@ function normalizeSettings(input = {}) {
       typeof input?.generalNote === "string"
         ? input.generalNote.trim().slice(0, GENERAL_NOTE_MAX)
         : "",
+    generalNotes: normalizeGeneralNotes(input?.generalNotes),
   };
 }
 
@@ -833,7 +851,9 @@ export class SignupRelayDO {
         const match = path.match(/^\/notes\/(\d+)$/);
         if (match && request.method === "GET") {
           const settings = await readSettings(this.env);
-          const generalText = settings.generalNote || "";
+          const platform = String(url.searchParams.get("platform") || "").trim().toLowerCase();
+          const generalText =
+            (platform && settings.generalNotes?.[platform]) || settings.generalNote || "";
           const [row] = this.sql()
             .exec("SELECT text, updated_at FROM game_notes WHERE rom_id = ?", Number(match[1]))
             .toArray();

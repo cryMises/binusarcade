@@ -49,6 +49,21 @@ const REQUEST_STATUS_LABELS = {
   denied: "Denied",
 };
 
+/* Console slugs that can carry an admin note (matches the request-box list). */
+const NOTE_PLATFORMS = [
+  ["atari2600", "Atari 2600"],
+  ["flash", "Flash"],
+  ["gb", "Game Boy"],
+  ["gba", "Game Boy Advance"],
+  ["gbc", "Game Boy Color"],
+  ["genesis", "Genesis / Mega Drive"],
+  ["nds", "Nintendo DS"],
+  ["nes", "NES"],
+  ["psx", "PlayStation"],
+  ["psp", "PSP"],
+  ["snes", "SNES"],
+];
+
 export function profileView() {
   const session = getSession();
   const user = session?.user || {};
@@ -324,19 +339,27 @@ export function adminView() {
   });
   const searchBtn = el("button", { class: "btn btn-keycap-sm btn-primary", type: "button" }, icon("search", 16), t("Search"));
   const results = el("div", { class: "admin-trial-results" });
-  const generalNoteInput = el("textarea", {
-    class: "input",
-    rows: "3",
-    maxlength: "500",
-    id: "general-note",
-    placeholder: t("Use DeSmuME for NDS if a game stutters."),
-    "aria-label": t("General note"),
+  const noteFields = NOTE_PLATFORMS.map(([slug, label]) => {
+    const input = el("textarea", {
+      class: "input",
+      rows: "2",
+      maxlength: "500",
+      id: `note-${slug}`,
+      placeholder: t("Leave empty for no note"),
+      "aria-label": label,
+    });
+    return { slug, label, input };
   });
   const trialToggle = el("input", { type: "checkbox", class: "switch-input", id: "trial-enabled" });
   const regToggle = el("input", { type: "checkbox", class: "switch-input", id: "registration-enabled", checked: true });
   const saveBtn = el("button", { class: "btn btn-keycap btn-mint", type: "button" }, icon("save", 18), t("Save settings"));
   let selectedGame = null;
-  let settings = { trialGameId: null, trialEnabled: false, registrationEnabled: true, generalNote: "" };
+  let settings = {
+    trialGameId: null,
+    trialEnabled: false,
+    registrationEnabled: true,
+    generalNotes: {},
+  };
   let disposed = false;
 
   /* Signup QR (relay) */
@@ -505,8 +528,9 @@ export function adminView() {
     if (disposed) return;
     trialToggle.checked = Boolean(settings.trialEnabled);
     regToggle.checked = settings.registrationEnabled !== false;
-    generalNoteInput.value = settings.generalNote || "";
-    status.replaceChildren(el("p", { class: "note" }, t("Settings loaded.")));
+    for (const { slug, input } of noteFields) {
+      input.value = settings.generalNotes?.[slug] || "";
+    }    status.replaceChildren(el("p", { class: "note" }, t("Settings loaded.")));
     if (settings.trialGameId) {
       try {
         selectedGame = await api.rom(settings.trialGameId);
@@ -585,11 +609,16 @@ export function adminView() {
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
     try {
+      const generalNotes = {};
+      for (const { slug, input } of noteFields) {
+        const text = input.value.trim();
+        if (text) generalNotes[slug] = text;
+      }
       const next = {
         trialGameId: selectedGame?.id ?? settings.trialGameId ?? null,
         trialEnabled: trialToggle.checked,
         registrationEnabled: regToggle.checked,
-        generalNote: generalNoteInput.value.trim(),
+        generalNotes,
       };
       if (next.trialEnabled && !next.trialGameId) {
         toast(t("Pick a trial game before enabling trial."), { tone: "warn" });
@@ -873,19 +902,28 @@ export function adminView() {
           el("span", {}, t("Allow self-registration")),
         ),
       ),
-      el("h2", { class: "section-subhead" }, t("General note for all games")),
+      el("h2", { class: "section-subhead" }, t("Notes per console")),
       el(
         "p",
         { class: "note" },
-        t(
-          "Shown on every game page. Use it for core advice, e.g. try DeSmuME for NDS if a game stutters.",
-        ),
+        t("Shown on that console's game pages. Leave a console empty to hide its note."),
       ),
       el(
-        "label",
-        { class: "field", for: "general-note" },
-        el("span", { class: "field-label" }, t("General note")),
-        generalNoteInput,
+        "div",
+        { class: "admin-note-grid" },
+        ...noteFields.map(({ slug, label, input }) =>
+          el(
+            "details",
+            { class: "admin-note-item" },
+            el("summary", {}, label),
+            el(
+              "label",
+              { class: "field", for: `note-${slug}` },
+              el("span", { class: "field-label" }, label),
+              input,
+            ),
+          ),
+        ),
       ),
       el("h2", { class: "section-subhead" }, t("Trial game")),
       currentGame,

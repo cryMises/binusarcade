@@ -106,4 +106,5 @@ export default {
   "Save problem": "Masalah save",
   "Other": "Lainnya",
   "General note": "Catatan umum",
+  "Console note": "Catatan konsol",
 };

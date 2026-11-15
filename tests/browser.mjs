@@ -1141,15 +1141,18 @@ try {
 
   {
     const { context, page } = await newPage(browser, { relayUrl: "https://relay.example" });
+    let notePlatform = "";
     await page.route("https://relay.example/**", async (route) => {
       const request = route.request();
-      const path = new URL(request.url()).pathname;
+      const url = new URL(request.url());
+      const path = url.pathname;
       if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
       if (path === "/notes/1" && request.method() === "GET") {
+        notePlatform = url.searchParams.get("platform") || "";
         return send(route, {
           rom_id: 1,
           text: "PC only, stylus game.",
-          generalText: "Use DeSmuME on phones if games stutter.",
+          generalText: notePlatform === "gba" ? "Use DeSmuME on phones if games stutter." : "",
         });
       }
       if (path === "/reports" && request.method() === "POST") return send(route, { ok: true }, 201);
@@ -1161,6 +1164,7 @@ try {
     await page.waitForSelector(".game-note:not(.game-note-general)", { timeout: 10_000 });
     assert(await page.isVisible("text=PC only, stylus game."), "detail renders the public admin note");
     assert(await page.isVisible("text=Use DeSmuME on phones if games stutter."), "detail renders the general note");
+    assert(notePlatform === "gba", "general note request carries the console slug");
     assert(await page.isVisible("[data-report-open]"), "detail shows the report button to signed-in visitors");
     assert((await page.locator("[data-note-edit]").count()) === 0, "non-admin has no note editor");
     await page.click("[data-report-open]");

@@ -298,6 +298,7 @@ async function checkSettings() {
         trialGameId: 42,
         registrationEnabled: false,
         generalNote: "Use DeSmuME for NDS if a game stutters.",
+        generalNotes: { nds: "Use DeSmuME on phones.", psx: "Try the lighter core." },
       },
       token: "admin-jwt",
     });
@@ -310,7 +311,8 @@ async function checkSettings() {
         defaults.trialGameId === null &&
         defaults.trialEnabled === false &&
         defaults.registrationEnabled === true &&
-        defaults.generalNote === "",
+        defaults.generalNote === "" &&
+        Object.keys(defaults.generalNotes || {}).length === 0,
       postNeedsAuth: noAuth.status === 401 || noAuth.status === 403,
       postBlocksNonAdmin: nonAdmin.status === 403,
       adminCanSave:
@@ -320,7 +322,9 @@ async function checkSettings() {
         saved.registrationEnabled === false &&
         after.trialGameId === 42 &&
         after.registrationEnabled === false &&
-        after.generalNote === "Use DeSmuME for NDS if a game stutters.",
+        after.generalNote === "Use DeSmuME for NDS if a game stutters." &&
+        after.generalNotes?.nds === "Use DeSmuME on phones." &&
+        after.generalNotes?.psx === "Try the lighter core.",
     };
   } finally {
     globalThis.fetch = origFetch;
@@ -512,12 +516,13 @@ async function checkCommunityDO() {
 
   try {
     let generalNote = "";
+    let generalNotes = {};
     const relay = new SignupRelayDO(
       { storage: { sql } },
       {
         ROMM_ORIGIN: "https://romm.test",
         ALLOWED_ORIGINS: "https://crymises.github.io",
-        SETTINGS: { async get() { return JSON.stringify({ generalNote }); } },
+        SETTINGS: { async get() { return JSON.stringify({ generalNote, generalNotes }); } },
       },
     );
 
@@ -551,6 +556,10 @@ async function checkCommunityDO() {
     generalNote = "Use DeSmuME for NDS if a game stutters.";
     const generalOnly = await (await call("/notes/42")).json();
     generalNote = "";
+    generalNotes = { nds: "Use DeSmuME on phones." };
+    const consoleNote = await (await call("/notes/42?platform=nds")).json();
+    const consoleFallback = await call("/notes/42?platform=psx");
+    generalNotes = {};
 
     /* Reports */
     const reportGuest = await call("/reports", {
@@ -675,7 +684,10 @@ async function checkCommunityDO() {
         noteCleared.status === 200 &&
         noteAfterClear.status === 404 &&
         generalOnly.text === null &&
-        generalOnly.generalText === "Use DeSmuME for NDS if a game stutters.",
+        generalOnly.generalText === "Use DeSmuME for NDS if a game stutters." &&
+        consoleNote.text === null &&
+        consoleNote.generalText === "Use DeSmuME on phones." &&
+        consoleFallback.status === 404,
       reportValidation:
         reportGuest.status === 201 &&
         reportDuplicate.status === 429 &&

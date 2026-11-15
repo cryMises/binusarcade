@@ -241,10 +241,11 @@ async function loadCommunity(container, rom) {
   if (!hasSignupRelay()) return;
 
   const admin = isRoleAdmin(getSession());
-  const payload = await api.gameNote(rom.id).catch(() => null);
+  const platform = rom.platform_slug || platformSlugOf(rom);
+  const payload = await api.gameNote(rom.id, platform).catch(() => null);
   if (!container.isConnected) return;
 
-  const generalText = payload?.generalText || "";
+  const generalText = typeof payload?.generalText === "string" ? payload.generalText.trim() : "";
   const callout = el("aside", { class: "game-note", role: "note" });
   const generalCallout = el("aside", { class: "game-note game-note-general", role: "note" });
   const actions = el("div", { class: "detail-community-actions" });
@@ -252,11 +253,11 @@ async function loadCommunity(container, rom) {
 
   if (generalText) {
     generalCallout.append(
-      el("span", { class: "game-note-icon" }, icon("alert", 17, t("General note"))),
+      el("span", { class: "game-note-icon" }, icon("alert", 17, t("Console note"))),
       el(
         "div",
         { class: "game-note-copy" },
-        el("strong", {}, t("General note")),
+        el("strong", {}, t("Console note")),
         el("p", {}, generalText),
       ),
     );

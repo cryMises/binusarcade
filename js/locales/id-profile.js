@@ -145,4 +145,8 @@ export default {
     "Tampil di semua halaman game. Pakai untuk saran core, misalnya coba DeSmuME untuk NDS kalau game tersendat.",
   "Use DeSmuME for NDS if a game stutters.":
     "Pakai DeSmuME untuk NDS kalau game tersendat.",
+  "Notes per console": "Catatan per konsol",
+  "Shown on that console's game pages. Leave a console empty to hide its note.":
+    "Tampil di halaman game konsol itu. Kosongkan konsol untuk menyembunyikan catatannya.",
+  "Leave empty for no note": "Kosongkan kalau tidak ada catatan",
 };

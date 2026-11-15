@@ -968,8 +968,9 @@ export const api = {
   },
 
   /* Community endpoints are served by the relay Worker (see worker/src/index.js). */
-  gameNote(romId, { signal } = {}) {
-    return relayRequest(`/notes/${encodeURIComponent(romId)}`, { signal, timeout: 8_000 }).catch((error) => {
+  gameNote(romId, platform, { signal } = {}) {
+    const query = platform ? `?platform=${encodeURIComponent(platform)}` : "";
+    return relayRequest(`/notes/${encodeURIComponent(romId)}${query}`, { signal, timeout: 8_000 }).catch((error) => {
       if (error?.status === 404) return null;
       throw error;
     });
