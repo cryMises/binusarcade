@@ -189,6 +189,27 @@
   }
 }
 
+/* ---------- Nav badges ---------- */
+
+.nav-badge {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-items: center;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.nav-badge[hidden] {
+  display: none;
+}
+
 /* ---------- Bottom navigation ---------- */
 
 .bottom-nav {
@@ -208,6 +229,7 @@
 }
 
 .bottom-nav a {
+  position: relative;
   display: flex;
   min-height: 52px;
   flex-direction: column;
@@ -228,6 +250,15 @@
 .bottom-nav a svg {
   width: 22px;
   height: 22px;
+}
+
+.bottom-nav a .nav-badge {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 6px);
+  height: 16px;
+  min-width: 16px;
+  font-size: 0.625rem;
 }
 
 .bottom-nav a[aria-current="page"] {
@@ -1561,6 +1592,83 @@
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* ---------- Privacy ---------- */
+
+.privacy-view {
+  max-width: 720px;
+  padding-bottom: 24px;
+}
+
+.privacy-head {
+  padding: 18px 0 6px;
+}
+
+.privacy-head .marker {
+  margin: 6px 0 8px;
+}
+
+.privacy-section {
+  margin-top: 26px;
+}
+
+.privacy-section .note {
+  margin: 8px 0 0;
+}
+
+.privacy-section .privacy-list + .note {
+  margin-top: 12px;
+}
+
+.privacy-section .marker-sm {
+  margin-bottom: 8px;
+}
+
+.privacy-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.privacy-list li {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.privacy-key {
+  width: fit-content;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--chip-bg);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.72rem;
+}
+
+.privacy-list-plain li {
+  padding-left: 12px;
+}
+
+.login-legal {
+  margin: 14px 0 0;
+  color: var(--on-surface-muted);
+  font-size: 0.75rem;
+}
+
+.login-legal a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--primary);
+  font-weight: 600;
 }
 
 /* ---------- Loading blocks ---------- */

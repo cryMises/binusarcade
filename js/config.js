@@ -21,7 +21,6 @@ export function signupClaimUrl(claimId, baseUrl = APP_PUBLIC_URL) {
 }
 
 export const APP_NAME = "Binus Arcade";
-export const APP_VERSION = "1.0.0";
 
 export const EJS_VERSION = "4.2.3";
 export const EJS_CDN = `https://cdn.emulatorjs.org/${EJS_VERSION}/data`;
@@ -42,12 +41,7 @@ export const STORAGE = {
   theme: "binusarcade.theme",
   device: "binusarcade.device",
   lang: "binusarcade.lang",
-};
-
-export const FEATURES = {
-  scores: false,
-  personalShelf: false,
-  adminConsole: false,
+  reportsSeen: "binusarcade.reports-seen",
 };
 
 /* Core list mirrors the stock RomM 5.4.1 mapping. First core is the default. */

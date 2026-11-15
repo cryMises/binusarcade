@@ -73,6 +73,57 @@ export default {
   "Back to Home": "Kembali ke Beranda",
   "Open the library": "Buka pustaka",
 
+  /* Privacy page */
+  "About this site": "Tentang situs ini",
+  "Privacy and data": "Privasi dan data",
+  "What this site keeps, where it goes, and how to remove it.":
+    "Apa yang disimpan situs ini, ke mana datanya pergi, dan cara menghapusnya.",
+  "Saved in this browser": "Disimpan di browser ini",
+  "These keys sit in localStorage or sessionStorage on your device. None of them are cookies.":
+    "Key ini tersimpan di localStorage atau sessionStorage perangkatmu. Tidak ada yang berupa cookie.",
+  "Your RomM access token. localStorage when stay signed in is on, sessionStorage otherwise.":
+    "Token akses RomM kamu. Masuk ke localStorage kalau tetap login aktif, kalau tidak ke sessionStorage.",
+  "Whether stay signed in is on.": "Penanda apakah tetap login aktif.",
+  "Light or dark mode.": "Mode terang atau gelap.",
+  "The language you picked.": "Bahasa yang kamu pilih.",
+  "A device label used when listing your saves.":
+    "Label perangkat yang dipakai saat menampilkan save kamu.",
+  "Ticket ids you already opened, so the reply badge clears.":
+    "ID tiket yang sudah kamu buka, supaya badge balasan hilang.",
+  "Your RomM password is never stored. Signing out deletes the token.":
+    "Password RomM kamu tidak pernah disimpan. Logout menghapus tokennya.",
+  "Sent to your RomM server": "Dikirim ke server RomM kamu",
+  "Signing in, browsing, and reading saves talk to the RomM server that hosts this library. Your player name and your saves stay on that server.":
+    "Login, menjelajah, dan membaca save berkomunikasi dengan server RomM yang menyimpan library ini. Nama pemain dan save kamu tetap di server itu.",
+  "Sent to the relay": "Dikirim ke relay",
+  "Broken-game reports, game requests, votes, and admin notes are stored on the self-hosted relay Worker so the admin can read them. Your RomM player name is attached so the admin can follow up.":
+    "Laporan game rusak, permintaan game, vote, dan catatan admin disimpan di relay Worker milik sendiri supaya admin bisa membacanya. Nama pemain RomM kamu ikut terlampir agar admin bisa menindaklanjuti.",
+  "Tickets and requests are plain database rows with no retention timer. Ask the admin to delete anything you want gone.":
+    "Tiket dan permintaan hanyalah baris database tanpa batas waktu simpan. Minta admin menghapus apa pun yang ingin kamu hilangkan.",
+  "Not collected": "Tidak dikumpulkan",
+  "No analytics, ads, or third-party trackers.":
+    "Tanpa analytics, iklan, atau pelacak pihak ketiga.",
+  "No tracking cookies. The site sets no cookies at all.":
+    "Tanpa cookie pelacak. Situs ini sama sekali tidak memasang cookie.",
+  "Game files never pass through this site. The player fetches them from your RomM server.":
+    "File game tidak pernah lewat situs ini. Player mengambilnya langsung dari server RomM kamu.",
+  "Removing your data": "Menghapus data kamu",
+  "Sign out from your account page to delete the stored token.":
+    "Logout dari halaman akun untuk menghapus token yang tersimpan.",
+  "Delete your own tickets from your account page, one at a time.":
+    "Hapus tiket milikmu dari halaman akun, satu per satu.",
+  "Clear site data in your browser settings to drop the theme, language, and device keys.":
+    "Hapus data situs di pengaturan browser untuk membuang key tema, bahasa, dan perangkat.",
+  "Ask the RomM admin to remove reports, requests, or notes from the relay.":
+    "Minta admin RomM menghapus laporan, permintaan, atau catatan dari relay.",
+
+  /* Home extras and nav badges */
+  "Pick a random game": "Pilih game acak",
+  "No games in the library yet.": "Belum ada game di library.",
+  "Couldn't pick a game. Try again.": "Gagal memilih game. Coba lagi.",
+  "{n} open reports": "{n} laporan terbuka",
+  "{n} replies on your reports": "{n} balasan di laporanmu",
+
   /* Shared components */
   "Something went sideways.": "Ada yang tidak beres.",
   "Can't reach the RomM server. Check your connection and the CORS setting.":

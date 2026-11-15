@@ -500,6 +500,46 @@ try {
     await context.close();
   }
 
+  /* Random pick from the home hero */
+  {
+    const { context, page } = await newPage(browser);
+    await page.goto(`${base}#/`);
+    await page.waitForSelector(".stat-card", { timeout: 10_000 });
+    assert(await page.isVisible("text=Pick a random game"), "home offers a random pick");
+    await page.click("text=Pick a random game");
+    await page.waitForSelector(".detail-title", { timeout: 10_000 });
+    assert(
+      await page.evaluate(() => location.hash.startsWith("#/game/")),
+      "random pick opens a game page",
+    );
+    await context.close();
+  }
+
+  /* Admin nav badge counts open reports */
+  {
+    const { context, page } = await newPage(browser, { userRole: "admin", relayUrl: "https://relay.example" });
+    await page.route("https://relay.example/**", async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+      if (path === "/reports" && request.method() === "GET") {
+        return send(route, { status: "open", openGroups: 1, groups: [{ count: 2, reports: [] }] });
+      }
+      return send(route, { detail: "Not found" }, 404);
+    });
+    await page.goto(`${base}#/`);
+    await page.waitForFunction(
+      () => {
+        const badge = document.querySelector('.bottom-nav a[data-nav="me"] .nav-badge');
+        return badge && !badge.hidden && badge.textContent === "2";
+      },
+      { timeout: 10_000 },
+    );
+    assert(true, "admin nav badge counts open reports");
+    await page.screenshot({ path: join(screenshots, "nav-badge-390.png"), fullPage: true });
+    await context.close();
+  }
+
   /* Login flow and token-only storage */
   {
     const { context, page } = await newPage(browser, { signedIn: false });
@@ -514,6 +554,12 @@ try {
     assert(await page.isVisible("text=Page not found"), "signed-out dead link shows the not-found page");
     assert(await page.isVisible("text=Open the library"), "not-found page offers the library");
     await page.screenshot({ path: join(screenshots, "not-found-390.png"), fullPage: true });
+
+    await page.goto(`${base}#/privacy`);
+    await page.waitForSelector("text=Saved in this browser", { timeout: 10_000 });
+    assert(await page.isVisible("text=Privacy and data"), "signed-out visitors can read the privacy page");
+    assert(await page.isVisible("text=No analytics, ads, or third-party trackers."), "privacy page lists what is not collected");
+    await page.screenshot({ path: join(screenshots, "privacy-390.png"), fullPage: true });
 
     await page.goto(base);
     await page.waitForSelector("#login-username");

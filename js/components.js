@@ -617,6 +617,7 @@ export function siteFooter() {
     "footer",
     { class: "site-footer" },
     el("span", { class: "note" }, t("Self-hosted RomM underneath. Binus Arcade on top.")),
+    el("a", { class: "footer-link", href: "#/privacy" }, t("Privacy and data")),
     link(
       `${ROMM_ORIGIN}`,
       { class: "footer-link" },

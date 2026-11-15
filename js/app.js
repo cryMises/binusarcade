@@ -1,4 +1,4 @@
-import { avatarUrl, getSession, hasSession, isAdmin, isPersistentSession, setPersistentSession } from "./api.js";
+import { api, avatarUrl, getSession, hasSession, isAdmin, isPersistentSession, setPersistentSession } from "./api.js";
 import { login, logout, restoreSession, userInitials, userLabel } from "./auth.js";
 import {
   cover,
@@ -7,7 +7,7 @@ import {
   langSwitch,
   toast,
 } from "./components.js";
-import { APP_VERSION, FEATURES, ROMM_ORIGIN } from "./config.js";
+import { ROMM_ORIGIN, STORAGE } from "./config.js";
 import { initI18n, locale, setLocale, t } from "./i18n.js";
 import { addRoute, notFoundView, readHash, rerender, startRouter } from "./router.js";
 import { applyTheme, currentTheme, initTheme } from "./theme.js";
@@ -15,6 +15,7 @@ import { adminView, profileView, scoresView } from "./views/profile.js";
 import { detailView } from "./views/detail.js";
 import { homeView } from "./views/home.js";
 import { libraryView } from "./views/library.js";
+import { privacyView } from "./views/privacy.js";
 import { shelfView } from "./views/shelf.js";
 import { registerView } from "./views/register.js";
 import { requestView } from "./views/request.js";
@@ -47,6 +48,7 @@ const SIGNED_OUT_PATHS = new Set([
   "/signup",
   "/register",
   "/trial",
+  "/privacy",
 ]);
 
 /* ------------------------------------------------------------------ */
@@ -108,6 +110,14 @@ async function renderSignedOut() {
     registerCleanup = null;
     app.replaceChildren(requestView());
     document.title = `${t("Request a game")} · Binus Arcade`;
+    return;
+  }
+
+  if (path === "/privacy") {
+    registerCleanup?.();
+    registerCleanup = null;
+    app.replaceChildren(privacyView());
+    document.title = `${t("Privacy and data")} · Binus Arcade`;
     return;
   }
 
@@ -461,6 +471,11 @@ function renderLogin(message = "", opts = {}) {
               icon("external", 13),
             ),
           ),
+          el(
+            "p",
+            { class: "login-legal" },
+            el("a", { href: "#/privacy" }, t("Privacy and data")),
+          ),
         ),
       ),
     ),
@@ -594,6 +609,7 @@ function mountShell() {
     addRoute("/me", profileView);
     addRoute("/admin", adminView);
     addRoute("/signup", signupView);
+    addRoute("/privacy", privacyView);
     addRoute("/register", (ctx) => {
       ctx.navigate("/", { replace: true });
       return el("div");
@@ -605,6 +621,78 @@ function mountShell() {
   }
 
   initTheme();
+  void refreshNavBadge();
+}
+
+/* ------------------------------------------------------------------ */
+/* Nav badges                                                         */
+/* ------------------------------------------------------------------ */
+
+function readSeenReports() {
+  try {
+    const list = JSON.parse(localStorage.getItem(STORAGE.reportsSeen) || "[]");
+    return new Set(Array.isArray(list) ? list.map(Number) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSeenReports(ids) {
+  try {
+    const merged = [...new Set([...readSeenReports(), ...ids.map(Number)])].slice(-200);
+    localStorage.setItem(STORAGE.reportsSeen, JSON.stringify(merged));
+  } catch {
+    /* storage blocked: the badge just shows again next visit */
+  }
+}
+
+function paintNavBadge(count, label) {
+  if (!chrome) return;
+  const text = count > 9 ? "9+" : String(count);
+  for (const { item, top, bottom } of chrome.navLinks) {
+    if (item.key !== "me") continue;
+    for (const link of [top, bottom]) {
+      const badge = link.querySelector(".nav-badge");
+      if (!badge) continue;
+      badge.hidden = count === 0;
+      badge.textContent = text;
+      if (count) {
+        link.setAttribute("aria-label", label);
+        badge.title = label;
+      } else {
+        link.removeAttribute("aria-label");
+        badge.removeAttribute("title");
+      }
+    }
+  }
+}
+
+/* Admins see open reports; players see replies they have not read yet. */
+async function refreshNavBadge({ markSeen = false } = {}) {
+  if (!hasSession()) return;
+  let count = 0;
+  let label = "";
+  try {
+    if (isAdmin()) {
+      const payload = await api.adminReports({ status: "open" });
+      const groups = Array.isArray(payload?.groups) ? payload.groups : [];
+      count = groups.reduce((sum, group) => sum + (Number(group?.count) || 0), 0);
+      label = t("{n} open reports", { n: count });
+    } else {
+      const payload = await api.myReports();
+      const rows = Array.isArray(payload?.reports) ? payload.reports : [];
+      const replied = rows.filter((row) => String(row?.admin_note || "").trim());
+      const repliedIds = replied.map((row) => Number(row.id));
+      if (markSeen) writeSeenReports(repliedIds);
+      const seen = markSeen ? new Set(repliedIds) : readSeenReports();
+      count = replied.filter((row) => !seen.has(Number(row.id))).length;
+      label = t("{n} replies on your reports", { n: count });
+    }
+  } catch {
+    /* relay missing or offline: leave the badge as it is */
+    return;
+  }
+  paintNavBadge(count, label);
 }
 
 function navLink(key, href, label, iconName) {
@@ -613,6 +701,7 @@ function navLink(key, href, label, iconName) {
     { href, dataset: { nav: key }, "data-nav": key },
     iconName ? icon(iconName, 21) : null,
     el("span", {}, t(label)),
+    el("span", { class: "nav-badge", "aria-hidden": "true", hidden: true }),
   );
 }
 
@@ -669,14 +758,14 @@ function updateChrome({ path, route }) {
     "/me": t("Account"),
     "/admin": t("Admin"),
     "/signup": t("Signup QR"),
+    "/privacy": t("Privacy and data"),
   };
   if (route !== "/game/:id") {
     const title = titles[route] || "Binus Arcade";
     document.title = title === "Binus Arcade" ? title : `${title} · Binus Arcade`;
   }
-  void isAdmin;
-  void FEATURES;
-  void APP_VERSION;
+  if (route === "/me") void refreshNavBadge({ markSeen: true });
+  if (route === "/admin") void refreshNavBadge();
 }
 
 /* ------------------------------------------------------------------ */

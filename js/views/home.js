@@ -11,6 +11,7 @@ import {
   sectionHead,
   skeletonGrid,
   timeAgo,
+  toast,
 } from "../components.js";
 import { RAIL_SIZE, normalizePlatform } from "../config.js";
 import { t } from "../i18n.js";
@@ -228,6 +229,44 @@ function recentPanel(result) {
 
 export function homeView(ctx) {
   const root = el("div", { class: "view wrap home-view" });
+  let libraryTotal = 0;
+
+  const randomButton = el(
+    "button",
+    { class: "btn btn-ghost", type: "button" },
+    icon("play", 15),
+    t("Pick a random game"),
+  );
+
+  async function openRandomGame() {
+    if (randomButton.disabled) return;
+    randomButton.disabled = true;
+    randomButton.setAttribute("aria-busy", "true");
+    try {
+      let total = libraryTotal;
+      if (!total) {
+        const probe = await api.roms({ limit: 1, with_total: true });
+        total = Number(probe?.total) || 0;
+        libraryTotal = total;
+      }
+      if (!total) {
+        toast(t("No games in the library yet."), { tone: "warn" });
+        return;
+      }
+      const offset = Math.floor(Math.random() * total);
+      const result = await api.roms({ limit: 1, offset, with_total: false });
+      const rom = result?.items?.[0];
+      if (!rom?.id) throw new Error("empty");
+      ctx.navigate(`/game/${rom.id}`);
+    } catch {
+      toast(t("Couldn't pick a game. Try again."), { tone: "error" });
+    } finally {
+      randomButton.disabled = false;
+      randomButton.removeAttribute("aria-busy");
+    }
+  }
+
+  randomButton.addEventListener("click", openRandomGame);
   const searchInput = el("input", {
     class: "input",
     type: "search",
@@ -266,6 +305,7 @@ export function homeView(ctx) {
       "p",
       { class: "hero-links" },
       el("a", { class: "btn btn-ghost", href: "#/request" }, icon("book", 15), t("Request a game")),
+      randomButton,
     ),
   );
 
@@ -308,8 +348,10 @@ export function homeView(ctx) {
 
     clear(statsSection);
     statsSection.append(el("h2", { class: "section-title", id: "home-stats-title" }, t("Library stats")));
-    if (statsResult.status === "fulfilled") statsSection.append(statsPanel(statsResult.value));
-    else statsSection.append(errorState(statsResult.reason, load));
+    if (statsResult.status === "fulfilled") {
+      statsSection.append(statsPanel(statsResult.value));
+      libraryTotal = Number(statsResult.value?.ROMS) || libraryTotal;
+    } else statsSection.append(errorState(statsResult.reason, load));
 
     clear(systemsSection);
     systemsSection.append(
